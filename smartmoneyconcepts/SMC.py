@@ -78,7 +78,4 @@ class SMC:
 
         return pd.concat([fvg, direction, start, end, size], axis=1)
 
-if __name__ == "__main__":
-    print([k for k in TA.__dict__.keys() if k[0] not in "_"])
-
 
