@@ -25,13 +25,3 @@ Test out the fair value gap indicator:
 ```python
 smc.fvg(ohlc)
 ```
-
-## Contributing
-
-1. Fork it (https://github.com/peerchemist/finta/fork)
-2. Study how it's implemented.
-3. Create your feature branch (git checkout -b my-new-feature).
-4. Run black code formatter on the finta.py to ensure uniform code style.
-5. Commit your changes (git commit -am 'Add some feature').
-6. Push to the branch (git push origin my-new-feature).
-7. Create a new Pull Request.
