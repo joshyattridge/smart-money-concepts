@@ -2,7 +2,7 @@ from setuptools import setup
 import codecs
 import os
 
-VERSION = '0.0.1'
+VERSION = '0.0.2'
 DESCRIPTION = 'Getting indicators based on smart money concepts or ICT'
 LONG_DESCRIPTION = 'A package that allows users to get access to smart money concepts and ICT concepts in the form of indicators easily.'
 
