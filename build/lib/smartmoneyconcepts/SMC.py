@@ -49,12 +49,12 @@ def apply(decorator):
 
 
 @apply(inputvalidator(input_="ohlc"))
-class SMC:
+class smc:
 
     __version__ = "0.01"
 
     @classmethod
-    def FVG(cls, ohlc: DataFrame) -> Series:
+    def fvg(cls, ohlc: DataFrame) -> Series:
         """
         FVG - Fair Value Gap
         A fair value gap is when the previous high is lower than the next low if the current candle is bullish.

@@ -3,6 +3,7 @@ README.md
 setup.py
 smartmoneyconcepts/SMC.py
 smartmoneyconcepts/__init__.py
+smartmoneyconcepts/smc.py
 smartmoneyconcepts.egg-info/PKG-INFO
 smartmoneyconcepts.egg-info/SOURCES.txt
 smartmoneyconcepts.egg-info/dependency_links.txt
