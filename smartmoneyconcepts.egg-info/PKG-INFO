@@ -1,0 +1,20 @@
+Metadata-Version: 2.1
+Name: smartmoneyconcepts
+Version: 0.0.1
+Summary: Getting indicators based on smart money concepts or ICT
+Home-page: https://github.com/joshyattridge/smartmoneyconcepts
+Author: Joshua Attridge
+License: UNKNOWN
+Keywords: python,smart money,ict,indicators,trading,forex,stocks,crypto,order blocks,liquidity
+Platform: UNKNOWN
+Classifier: Development Status :: 1 - Planning
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: Unix
+Classifier: Operating System :: MacOS :: MacOS X
+Classifier: Operating System :: Microsoft :: Windows
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
+A package that allows users to get access to smart money concepts and ICT concepts in the form of indicators easily.
+

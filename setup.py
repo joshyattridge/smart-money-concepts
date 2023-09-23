@@ -13,7 +13,7 @@ setup(
     author="Joshua Attridge",
     description=DESCRIPTION,
     long_description_content_type="text/markdown",
-    long_description=long_description,
+    long_description=LONG_DESCRIPTION,
     packages=["smartmoneyconcepts"],
     install_requires=["pandas", "numpy"],
     keywords=['python', 'smart money', 'ict', 'indicators', 'trading', 'forex', 'stocks', 'crypto', 'order blocks', 'liquidity'],

@@ -1,1 +1,1 @@
-from smartmoneyconcepts.SMC import SMC
+from smartmoneyconcepts.smc import smc
