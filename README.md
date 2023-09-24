@@ -18,10 +18,18 @@ Prepare data to use with smc:
 
 smc expects properly formated ohlc DataFrame, with column names in lowercase: ["open", "high", "low", "close"] and ["volume"] for indicators that expect ohlcv input.
 
+## Indicators
+
+FVG - Fair Value Gap
+Highs and Lows
+BOS/CHoCH - Break of Structure / Change of Character
+OB - Order Block
+
 ## Examples
 
-Test out the fair value gap indicator:
-
 ```python
-smc.fvg(ohlc)
+    smc.fvg(ohlc)
+    smc.highs_lows(ohlc)
+    smc.bos_choch(ohlc)
+    smc.ob(ohlc)
 ```
