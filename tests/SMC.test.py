@@ -22,7 +22,6 @@ fig = go.Figure(
     ]
 )
 
-
 def add_FVG(fig):
     fvg_data = smc.fvg(df)
     # plot a rectangle for each fvg
@@ -48,44 +47,31 @@ def add_FVG(fig):
             )
     return fig
 
-
 def add_highs_lows(fig):
-    highs_lows = smc.highs_lows(df)
+    highs_lows_data = smc.highs_lows(df)
 
-    # plot a dot on each high and low
-    for i in range(len(highs_lows["Highs"])):
-        if highs_lows["Highs"][i] == 1 or highs_lows["Lows"][i] == 1:
-            high_or_low = "high" if highs_lows["Highs"][i] == 1 else "low"
-            fig.add_trace(
-                go.Scatter(
-                    x=[df["date"][i]],
-                    y=[df[high_or_low][i]],
-                    mode="markers",
-                    marker=dict(size=10, color="blue", opacity=0.5),
-                )
-            )
-    return fig
-
-
-def add_BOS_CHoCH(fig):
-    bos_data = smc.bos_choch(df)
-
+    # remove from highs_lows_data
+    indexs = []
+    levels = []
+    for i in range(len(highs_lows_data)):
+        if highs_lows_data["HighsLows"][i] != 0:
+            indexs.append(i)
+            levels.append(highs_lows_data["Levels"][i])
+    
     # plot these lines on a graph
-    for i in range(len(bos_data["BOS"])):
-        if bos_data["BOS"][i] == 1 or bos_data["CHOCH"][i] == 1:
-            fig.add_trace(
-                go.Scatter(
-                    x=[df["date"][i], df["date"][bos_data["BrokenIndex"][i]]],
-                    y=[bos_data["Level"][i], bos_data["Level"][i]],
-                    mode="lines",
-                    line=dict(
-                        color="red" if bos_data["BOS"][i] == 1 else "green",
-                    ),
-                    opacity=0.5,
-                )
+    for i in range(len(indexs) - 1):
+        fig.add_trace(
+            go.Scatter(
+                x=[df["date"][indexs[i]], df["date"][indexs[i + 1]]],
+                y=[levels[i], levels[i+1]],
+                mode="lines",
+                line=dict(
+                    color="green" if highs_lows_data["HighsLows"][indexs[i]] == -1 else "red",
+                ),
             )
-    return fig
+        )
 
+    return fig
 
 def add_OB(fig):
     ob_data = smc.ob(df)
@@ -156,7 +142,6 @@ def add_liquidity(fig):
 
 fig = add_FVG(fig)
 fig = add_highs_lows(fig)
-fig = add_BOS_CHoCH(fig)
 fig = add_OB(fig)
 fig = add_liquidity(fig)
 fig.show()
