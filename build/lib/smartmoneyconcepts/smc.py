@@ -84,7 +84,6 @@ class smc:
 
         mitigated_index = np.zeros(len(ohlc), dtype=np.int32)
         for i in np.where(fvg != 0)[0]:
-            mask = np.zeros(len(ohlc), dtype=np.bool)
             if fvg[i] == 1:
                 mask = ohlc["low"][i + 2 :] <= top[i]
             elif fvg[i] == -1:
@@ -151,19 +150,12 @@ class smc:
         fvg = cls.fvg(ohlc)
 
         ob = np.where((fvg["FVG"].shift(-1) != 0) & (fvg["FVG"] == 0), fvg["FVG"].shift(-1), 0)
-        # top is equal to the current candles high unless the ob is -1 and the next candles high is higher than the current candles high then top is equal to the next candles high
-        top = np.where(
-            (ob == -1) & (ohlc["high"].shift(-1) > ohlc["high"]), ohlc["high"].shift(-1), ohlc["high"]
-        )
-        # bottom is equal to the current candles low unless the ob is 1 and the next candles low is lower than the current candles low then bottom is equal to the next candles low
-        bottom = np.where(
-            (ob == 1) & (ohlc["low"].shift(-1) < ohlc["low"]), ohlc["low"].shift(-1), ohlc["low"]
-        )
+        top = np.where((fvg["FVG"].shift(-1) == -1) & (ohlc["high"] < ohlc["high"].shift(-1)), ohlc["high"].shift(-1), ohlc["high"])
+        bottom = np.where((fvg["FVG"].shift(-1) == 1) & (ohlc["low"] > ohlc["low"].shift(-1)), ohlc["low"].shift(-1), ohlc["low"])
 
         # set mitigated to np.nan
         mitigated_index = np.zeros(len(ohlc), dtype=np.int32)
         for i in np.where(ob != 0)[0]:
-            mask = np.zeros(len(ohlc), dtype=np.bool)
             if ob[i] == 1:
                 mask = ohlc["low"][i + 2 :] <= top[i]
             elif ob[i] == -1:
@@ -269,6 +261,3 @@ class smc:
         return pd.concat(
             [liquidity, buy_sell_side, level, liquidity_end, liquidity_swept], axis=1
         )
-
-
-# TODO: correct mask error for ob and fvg

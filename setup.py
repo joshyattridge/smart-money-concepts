@@ -2,7 +2,7 @@ from setuptools import setup
 import codecs
 import os
 
-VERSION = '0.0.6'
+VERSION = '0.0.9'
 DESCRIPTION = 'Getting indicators based on smart money concepts or ICT'
 
 # read the contents of the README file
@@ -18,7 +18,7 @@ setup(
     long_description_content_type="text/markdown",
     long_description=LONG_DESCRIPTION,
     packages=["smartmoneyconcepts"],
-    install_requires=["pandas", "numpy"],
+    install_requires=["pandas", "numpy", "zigzag"],
     keywords=['smart', 'money', 'concepts', 'ict', 'indicators', 'trading', 'forex', 'stocks', 'crypto', 'order', 'blocks', 'liquidity'],
     url="https://github.com/joshyattridge/smartmoneyconcepts",
     classifiers=[

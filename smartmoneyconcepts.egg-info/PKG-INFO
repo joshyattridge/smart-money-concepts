@@ -1,3 +1,21 @@
+Metadata-Version: 2.1
+Name: smartmoneyconcepts
+Version: 0.0.8
+Summary: Getting indicators based on smart money concepts or ICT
+Home-page: https://github.com/joshyattridge/smartmoneyconcepts
+Author: Joshua Attridge
+License: UNKNOWN
+Keywords: smart,money,concepts,ict,indicators,trading,forex,stocks,crypto,order,blocks,liquidity
+Platform: UNKNOWN
+Classifier: Development Status :: 1 - Planning
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: Unix
+Classifier: Operating System :: MacOS :: MacOS X
+Classifier: Operating System :: Microsoft :: Windows
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
 # Smart Money Concepts (smc) BETA
 
 The Smart Money Concepts Python Indicator is a sophisticated financial tool developed for traders and investors to gain insights into market sentiment, trends, and potential reversals. This indicator is built using Python, a versatile programming language known for its data analysis and visualization capabilities.
@@ -47,3 +65,5 @@ This project is still in BETA so please feel free to contribute to the project. 
 5. Commit your changes (git commit -am 'Add some feature').
 6. Push to the branch (git push origin my-new-feature).
 7. Create a new Pull Request.
+
+
