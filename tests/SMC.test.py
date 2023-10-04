@@ -7,7 +7,7 @@ import os
 sys.path.append(os.path.abspath("../"))
 from smartmoneyconcepts.smc import smc
 
-df = pd.read_csv("bittrex_btc-usdt.csv")
+df = pd.read_csv("EURUSD_15M.csv")
 df = df.iloc[-200:]
 df = df.reset_index(drop=True)
 fig = go.Figure(
@@ -26,10 +26,10 @@ def add_FVG(fig):
     fvg_data = smc.fvg(df)
     # plot a rectangle for each fvg
     for i in range(len(fvg_data["FVG"])):
-        if fvg_data["FVG"][i] == 1:
+        if fvg_data["FVG"][i] != 0:
             x1 = (
                 fvg_data["MitigatedIndex"][i]
-                if fvg_data["Mitigated"][i] == 1
+                if fvg_data["MitigatedIndex"][i] != 0
                 else len(df) - 1
             )
             fig.add_shape(
@@ -48,7 +48,7 @@ def add_FVG(fig):
     return fig
 
 def add_highs_lows(fig):
-    highs_lows_data = smc.highs_lows(df)
+    highs_lows_data = smc.highs_lows(df, up_thresh=0.0005, down_thresh=-0.0005)
 
     # remove from highs_lows_data
     indexs = []
@@ -81,7 +81,7 @@ def add_OB(fig):
         if ob_data["OB"][i] == 1:
             x1 = (
                 ob_data["MitigatedIndex"][i]
-                if ob_data["Mitigated"][i] == 1
+                if ob_data["MitigatedIndex"][i] != 0
                 else len(df) - 1
             )
             fig.add_shape(
