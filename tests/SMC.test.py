@@ -8,7 +8,7 @@ sys.path.append(os.path.abspath("../"))
 from smartmoneyconcepts.smc import smc
 
 df = pd.read_csv("EURUSD_15M.csv")
-df = df.iloc[-200:]
+df = df.iloc[-5000:]
 df = df.reset_index(drop=True)
 fig = go.Figure(
     data=[
@@ -48,7 +48,7 @@ def add_FVG(fig):
     return fig
 
 def add_highs_lows(fig):
-    highs_lows_data = smc.highs_lows(df, up_thresh=0.0005, down_thresh=-0.0005)
+    highs_lows_data = smc.highs_lows(df)
 
     # remove from highs_lows_data
     indexs = []
@@ -104,7 +104,7 @@ def add_liquidity(fig):
 
     # draw a line horizontally for each liquidity level
     for i in range(len(liquidity_data["Liquidity"])):
-        if liquidity_data["Liquidity"][i] == 1:
+        if liquidity_data["Liquidity"][i] != 0:
             fig.add_trace(
                 go.Scatter(
                     x=[df["date"][i], df["date"][liquidity_data["End"][i]]],
@@ -127,7 +127,7 @@ def add_liquidity(fig):
                         liquidity_data["Level"][i],
                         (
                             df["high"][liquidity_data["Swept"][i]]
-                            if liquidity_data["BuySellSide"][i] == 2
+                            if liquidity_data["Liquidity"][i] == 1
                             else df["low"][liquidity_data["Swept"][i]]
                         ),
                     ],
@@ -140,8 +140,8 @@ def add_liquidity(fig):
     return fig
 
 
-fig = add_FVG(fig)
+# fig = add_FVG(fig)
 fig = add_highs_lows(fig)
-fig = add_OB(fig)
+# fig = add_OB(fig)
 fig = add_liquidity(fig)
 fig.show()

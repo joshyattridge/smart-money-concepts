@@ -104,8 +104,11 @@ class smc:
         )
 
     @classmethod
-    def highs_lows(cls, ohlc: DataFrame, up_thresh=0.05, down_thresh=-0.05) -> Series:
-        highs_lows = peak_valley_pivots(ohlc["close"], up_thresh, down_thresh)
+    def highs_lows(cls, ohlc: DataFrame, percentage_thresh=0.05) -> Series:
+        # subtract the highest high from the lowest low
+        pip_range = max(ohlc["high"]) - min(ohlc["low"])
+        pip_range = pip_range * percentage_thresh
+        highs_lows = peak_valley_pivots(ohlc["close"], pip_range, -pip_range)
         still_adjusting = True
         while still_adjusting:
             still_adjusting = False
@@ -183,7 +186,7 @@ class smc:
         )
 
     @classmethod
-    def liquidity(cls, ohlc: DataFrame, range_percent=0.01, up_thresh=0.05, down_thresh=-0.05) -> Series:
+    def liquidity(cls, ohlc: DataFrame, range_percent=0.01) -> Series:
         """
         Liquidity
         Liquidity is when there are multiply highs within a small range of each other.
@@ -194,14 +197,13 @@ class smc:
         pip_range = (max(ohlc["high"]) - min(ohlc["low"])) * range_percent
 
         # get the highs and lows
-        highs_lows = cls.highs_lows(ohlc, up_thresh, down_thresh)
+        highs_lows = cls.highs_lows(ohlc)
         levels = highs_lows["Levels"]
         highs_lows = highs_lows["HighsLows"]
 
         # go through all of the high levels and if there are more than 1 within the pip range, then it is liquidity
         liquidity = np.zeros(len(ohlc), dtype=np.int32)
-        buy_sell_side = np.zeros(len(ohlc), dtype=np.int32)
-        liquidity_level = np.zeros(len(ohlc), dtype=np.int32)
+        liquidity_level = np.zeros(len(ohlc), dtype=np.float32)
         liquidity_end = np.zeros(len(ohlc), dtype=np.int32)
         liquidity_swept = np.zeros(len(ohlc), dtype=np.int32)
 
@@ -227,7 +229,6 @@ class smc:
                         temp_liquidity_levels
                     )
                     liquidity[i] = 1
-                    buy_sell_side[i] = 2  # 2 is buy
                     liquidity_level[i] = average_high
                     liquidity_end[i] = end
                     liquidity_swept[i] = swept
@@ -254,21 +255,16 @@ class smc:
                     average_low = sum(temp_liquidity_levels) / len(
                         temp_liquidity_levels
                     )
-                    liquidity[i] = 1
-                    buy_sell_side[i] = 1
+                    liquidity[i] = -1
                     liquidity_level[i] = average_low
                     liquidity_end[i] = end
                     liquidity_swept[i] = swept
 
         liquidity = pd.Series(liquidity, name="Liquidity")
-        buy_sell_side = pd.Series(buy_sell_side, name="BuySellSide")
         level = pd.Series(liquidity_level, name="Level")
         liquidity_end = pd.Series(liquidity_end, name="End")
         liquidity_swept = pd.Series(liquidity_swept, name="Swept")
 
         return pd.concat(
-            [liquidity, buy_sell_side, level, liquidity_end, liquidity_swept], axis=1
+            [liquidity, level, liquidity_end, liquidity_swept], axis=1
         )
-
-
-# TODO: correct mask error for ob and fvg
