@@ -84,7 +84,7 @@ class smc:
 
         mitigated_index = np.zeros(len(ohlc), dtype=np.int32)
         for i in np.where(fvg != 0)[0]:
-            mask = np.zeros(len(ohlc), dtype=np.bool)
+            mask = np.zeros(len(ohlc), dtype=np.bool_)
             if fvg[i] == 1:
                 mask = ohlc["low"][i + 2 :] <= top[i]
             elif fvg[i] == -1:
@@ -166,7 +166,7 @@ class smc:
         # set mitigated to np.nan
         mitigated_index = np.zeros(len(ohlc), dtype=np.int32)
         for i in np.where(ob != 0)[0]:
-            mask = np.zeros(len(ohlc), dtype=np.bool)
+            mask = np.zeros(len(ohlc), dtype=np.bool_)
             if ob[i] == 1:
                 mask = ohlc["low"][i + 2 :] <= top[i]
             elif ob[i] == -1:
@@ -186,7 +186,7 @@ class smc:
         )
 
     @classmethod
-    def liquidity(cls, ohlc: DataFrame, range_percent=0.01) -> Series:
+    def liquidity(cls, ohlc: DataFrame, range_percent=0.01, percentage_thresh=0.05) -> Series:
         """
         Liquidity
         Liquidity is when there are multiply highs within a small range of each other.
@@ -197,7 +197,7 @@ class smc:
         pip_range = (max(ohlc["high"]) - min(ohlc["low"])) * range_percent
 
         # get the highs and lows
-        highs_lows = cls.highs_lows(ohlc)
+        highs_lows = cls.highs_lows(ohlc, percentage_thresh=percentage_thresh)
         levels = highs_lows["Levels"]
         highs_lows = highs_lows["HighsLows"]
 
