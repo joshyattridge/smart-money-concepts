@@ -1,12 +1,10 @@
 Metadata-Version: 2.1
 Name: smartmoneyconcepts
-Version: 0.0.9
+Version: 0.0.11
 Summary: Getting indicators based on smart money concepts or ICT
 Home-page: https://github.com/joshyattridge/smartmoneyconcepts
 Author: Joshua Attridge
-License: UNKNOWN
 Keywords: smart,money,concepts,ict,indicators,trading,forex,stocks,crypto,order,blocks,liquidity
-Platform: UNKNOWN
 Classifier: Development Status :: 1 - Planning
 Classifier: Intended Audience :: Developers
 Classifier: Programming Language :: Python :: 3
@@ -38,10 +36,10 @@ smc expects properly formated ohlc DataFrame, with column names in lowercase: ["
 
 ## Indicators
 
-FVG - Fair Value Gap
-Highs and Lows
-OB - Order Block
-Liquidity
+- FVG - Fair Value Gap
+- Highs and Lows
+- OB - Order Block
+- Liquidity
 
 ## Examples
 
@@ -49,9 +47,9 @@ Please take a look at smc.test.py for more detailed examples on how each indicat
 
 ```python
     smc.fvg(ohlc) # Fair Value Gap
-    smc.highs_lows(ohlc, up_thresh=0.05, down_thresh=-0.05) # Highs and Lows
+    smc.highs_lows(ohlc, percentage_thresh=0.05) # Highs and Lows
     smc.ob(ohlc) # Order Block
-    smc.liquidity(ohlc, range_percent=0.01, up_thresh=0.05, down_thresh=-0.05) # Liquidity
+    smc.liquidity(ohlc, range_percent=0.01, percentage_thresh=0.05) # Liquidity
 ```
 
 ## Contributing
@@ -65,5 +63,3 @@ This project is still in BETA so please feel free to contribute to the project. 
 5. Commit your changes (git commit -am 'Add some feature').
 6. Push to the branch (git push origin my-new-feature).
 7. Create a new Pull Request.
-
-
