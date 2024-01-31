@@ -8,7 +8,7 @@ sys.path.append(os.path.abspath("../"))
 from smartmoneyconcepts.smc import smc
 
 df = pd.read_csv("EURUSD_15M.csv")
-df = df.iloc[-5000:]
+df = df.iloc[-500:]
 df = df.reset_index(drop=True)
 fig = go.Figure(
     data=[
@@ -140,8 +140,9 @@ def add_liquidity(fig):
     return fig
 
 
-# fig = add_FVG(fig)
+fig = add_FVG(fig)
 fig = add_highs_lows(fig)
-# fig = add_OB(fig)
+fig = add_OB(fig)
 fig = add_liquidity(fig)
-fig.show()
+fig.update_layout(xaxis_rangeslider_visible=False)
+fig.write_image("test.png")

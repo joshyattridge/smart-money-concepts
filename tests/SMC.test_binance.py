@@ -4,9 +4,9 @@ import sys
 import os
 from binance.client import Client
 from datetime import datetime
-from smartmoneyconcepts.smc import smc
 
 sys.path.append(os.path.abspath("../"))
+from smartmoneyconcepts.smc import smc
 
 
 def import_data(symbol, start_str, timeframe):
@@ -164,9 +164,10 @@ def add_liquidity(fig):
     return fig
 
 
-# fig = add_FVG(fig)
-# fig = add_highs_lows(fig)
+fig = add_FVG(fig)
+fig = add_highs_lows(fig)
 fig = add_OB(fig)
-# fig = add_liquidity(fig)
+fig = add_liquidity(fig)
 fig.update_layout(xaxis_rangeslider_visible=False)
-fig.show()
+fig.write_image("test_binance.png")
+
