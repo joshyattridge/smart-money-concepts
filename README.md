@@ -22,6 +22,7 @@ smc expects properly formated ohlc DataFrame, with column names in lowercase: ["
 
 - FVG - Fair Value Gap
 - Highs and Lows
+- BOS and CHoCH
 - OB - Order Block
 - Liquidity
 
@@ -31,9 +32,10 @@ Please take a look at smc.test.py for more detailed examples on how each indicat
 
 ```python
     smc.fvg(ohlc) # Fair Value Gap
-    smc.highs_lows(ohlc, percentage_thresh=0.05) # Highs and Lows
+    smc.highs_lows(ohlc) # Highs and Lows
+    smc.bos_choch(ohlc, filter_liquidity=False) # Detect BOS and CHoCH
     smc.ob(ohlc) # Order Block
-    smc.liquidity(ohlc, range_percent=0.01, percentage_thresh=0.05) # Liquidity
+    smc.liquidity(ohlc) # Liquidity
 ```
 
 ## Contributing
