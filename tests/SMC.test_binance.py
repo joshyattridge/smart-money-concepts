@@ -26,6 +26,7 @@ def import_data(symbol, start_str, timeframe):
 
 
 df = import_data("BTCUSDT", "2021-01-01", "1d")
+df = df.iloc[-500:]
 
 fig = go.Figure(
     data=[
@@ -96,6 +97,34 @@ def add_highs_lows(fig):
 
     return fig
 
+def add_bos_choch(fig):
+    bos_choch_data = smc.bos_choch(df)
+
+    for i in range(len(bos_choch_data["BOS"])):
+        if bos_choch_data["BOS"][i] != 0:
+            fig.add_trace(
+                go.Scatter(
+                    x=[df.index[i], df.index[bos_choch_data["BrokenIndex"][i]]],
+                    y=[bos_choch_data["Level"][i], bos_choch_data["Level"][i]],
+                    mode="lines",
+                    line=dict(
+                        color="orange",
+                    ),
+                )
+            )
+        if bos_choch_data["CHOCH"][i] != 0:
+            fig.add_trace(
+                go.Scatter(
+                    x=[df.index[bos_choch_data["BrokenIndex"][i]], df.index[i]],
+                    y=[bos_choch_data["Level"][i], bos_choch_data["Level"][i]],
+                    mode="lines",
+                    line=dict(
+                        color="blue",
+                    ),
+                )
+            )
+
+    return fig
 
 def add_OB(fig):
     ob_data = smc.ob(df)
@@ -166,8 +195,13 @@ def add_liquidity(fig):
 
 fig = add_FVG(fig)
 fig = add_highs_lows(fig)
+fig = add_bos_choch(fig)
 fig = add_OB(fig)
 fig = add_liquidity(fig)
 fig.update_layout(xaxis_rangeslider_visible=False)
+fig.update_layout(showlegend=False)
+# fig.update_xaxes(visible=False)
+# fig.update_yaxes(visible=False)
+fig.update_layout(margin=dict(l=0, r=0, b=0, t=0))
 fig.write_image("test_binance.png")
 

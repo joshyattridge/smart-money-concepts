@@ -13,7 +13,7 @@ df = df.reset_index(drop=True)
 fig = go.Figure(
     data=[
         go.Candlestick(
-            x=df["date"],
+            x=df.index,
             open=df["open"],
             high=df["high"],
             low=df["low"],
@@ -35,9 +35,9 @@ def add_FVG(fig):
             fig.add_shape(
                 # filled Rectangle
                 type="rect",
-                x0=df["date"][i],
+                x0=df.index[i],
                 y0=fvg_data["Top"][i],
-                x1=df["date"][x1],
+                x1=df.index[x1],
                 y1=fvg_data["Bottom"][i],
                 line=dict(
                     width=0,
@@ -62,7 +62,7 @@ def add_highs_lows(fig):
     for i in range(len(indexs) - 1):
         fig.add_trace(
             go.Scatter(
-                x=[df["date"][indexs[i]], df["date"][indexs[i + 1]]],
+                x=[df.index[indexs[i]], df.index[indexs[i + 1]]],
                 y=[levels[i], levels[i+1]],
                 mode="lines",
                 line=dict(
@@ -70,6 +70,35 @@ def add_highs_lows(fig):
                 ),
             )
         )
+
+    return fig
+
+def add_bos_choch(fig):
+    bos_choch_data = smc.bos_choch(df)
+
+    for i in range(len(bos_choch_data["BOS"])):
+        if bos_choch_data["BOS"][i] != 0:
+            fig.add_trace(
+                go.Scatter(
+                    x=[df.index[i], df.index[bos_choch_data["BrokenIndex"][i]]],
+                    y=[bos_choch_data["Level"][i], bos_choch_data["Level"][i]],
+                    mode="lines",
+                    line=dict(
+                        color="orange",
+                    ),
+                )
+            )
+        if bos_choch_data["CHOCH"][i] != 0:
+            fig.add_trace(
+                go.Scatter(
+                    x=[df.index[bos_choch_data["BrokenIndex"][i]], df.index[i]],
+                    y=[bos_choch_data["Level"][i], bos_choch_data["Level"][i]],
+                    mode="lines",
+                    line=dict(
+                        color="blue",
+                    ),
+                )
+            )
 
     return fig
 
@@ -86,9 +115,9 @@ def add_OB(fig):
             )
             fig.add_shape(
                 type="rect",
-                x0=df["date"][i],
+                x0=df.index[i],
                 y0=ob_data["Top"][i],
-                x1=df["date"][x1],
+                x1=df.index[x1],
                 y1=ob_data["Bottom"][i],
                 line=dict(
                     width=0,
@@ -107,7 +136,7 @@ def add_liquidity(fig):
         if liquidity_data["Liquidity"][i] != 0:
             fig.add_trace(
                 go.Scatter(
-                    x=[df["date"][i], df["date"][liquidity_data["End"][i]]],
+                    x=[df.index[i], df.index[liquidity_data["End"][i]]],
                     y=[liquidity_data["Level"][i], liquidity_data["Level"][i]],
                     mode="lines",
                     line=dict(
@@ -120,8 +149,8 @@ def add_liquidity(fig):
             fig.add_trace(
                 go.Scatter(
                     x=[
-                        df["date"][liquidity_data["End"][i]],
-                        df["date"][liquidity_data["Swept"][i]],
+                        df.index[liquidity_data["End"][i]],
+                        df.index[liquidity_data["Swept"][i]],
                     ],
                     y=[
                         liquidity_data["Level"][i],
@@ -142,7 +171,12 @@ def add_liquidity(fig):
 
 fig = add_FVG(fig)
 fig = add_highs_lows(fig)
+fig = add_bos_choch(fig)
 fig = add_OB(fig)
 fig = add_liquidity(fig)
 fig.update_layout(xaxis_rangeslider_visible=False)
+fig.update_layout(showlegend=False)
+fig.update_xaxes(visible=False)
+fig.update_yaxes(visible=False)
+fig.update_layout(margin=dict(l=0, r=0, b=0, t=0))
 fig.write_image("test.png")
