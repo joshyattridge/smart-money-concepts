@@ -53,7 +53,10 @@ def apply(decorator):
 @apply(inputvalidator(input_="ohlc"))
 class smc:
 
-    __version__ = "0.01"
+    __version__ = "0.0.12"
+
+    percentage_thresh = 0.005
+    range_percent=0.01
 
     @classmethod
     def fvg(cls, ohlc: DataFrame) -> Series:
@@ -104,11 +107,19 @@ class smc:
         )
 
     @classmethod
-    def highs_lows(cls, ohlc: DataFrame, percentage_thresh=0.05) -> Series:
+    def highs_lows(cls, ohlc: DataFrame) -> Series:
+
         # subtract the highest high from the lowest low
         pip_range = max(ohlc["high"]) - min(ohlc["low"])
-        pip_range = pip_range * percentage_thresh
-        highs_lows = peak_valley_pivots(ohlc["close"], pip_range, -pip_range)
+        pip_range = pip_range * cls.percentage_thresh
+
+        # apply min-max scaling to the close for zigzag to work
+        close = ohlc["close"].copy()
+        close = ((close - close.min()) / (close.max() - close.min())) + 1
+        pip_range = (pip_range)/(ohlc["close"].iloc[-1]/(close.iloc[-1]-1))
+        
+        highs_lows = peak_valley_pivots(close, abs(pip_range), -abs(pip_range))
+
         still_adjusting = True
         while still_adjusting:
             still_adjusting = False
@@ -142,6 +153,81 @@ class smc:
         levels = pd.Series(levels, name="Levels")
 
         return pd.concat([highs_lows, levels], axis=1)
+
+    @classmethod
+    def bos_choch(cls, ohlc: DataFrame, filter_liquidity=False) -> Series:
+        """
+        BOS - Breakout Signal
+        CHoCH - Change of Character signal
+        This is when the current candle is the first candle to break out of a range.
+        """
+
+        # get the highs and lows
+        highs_lows = cls.highs_lows(ohlc)
+        levels = highs_lows["Levels"]
+        highs_lows = highs_lows["HighsLows"]
+
+        # filter out the highs and lows used if it is aligned with liquidity
+        if filter_liquidity:
+            liquidity = cls.liquidity(ohlc)
+            liquidity = liquidity["Liquidity"]
+            for i in range(len(highs_lows)):
+                if liquidity[i] != 0 and highs_lows[i] != 0:
+                    highs_lows[i] = 0
+
+        levels_order = []
+        highs_lows_order = []
+
+        bos = np.zeros(len(ohlc), dtype=np.int32)
+        choch = np.zeros(len(ohlc), dtype=np.int32)
+        level = np.zeros(len(ohlc), dtype=np.float32)
+
+        last_positions = []
+
+        for i in range(len(highs_lows)):
+            if highs_lows[i] != 0:
+                levels_order.append(levels[i])
+                highs_lows_order.append(highs_lows[i])
+                if len(levels_order) >= 4:
+                    # bullish bos
+                    bos[last_positions[-2]] = 1 if (np.all(highs_lows_order[-4:] == [-1, 1, -1, 1]) and np.all(levels_order[-4]<levels_order[-2]<levels_order[-3]<levels_order[-1])) else 0
+                    level[last_positions[-2]] = levels_order[-3] if bos[last_positions[-2]] != 0 else 0
+
+                    # bearish bos
+                    bos[last_positions[-2]] = -1 if (np.all(highs_lows_order[-4:] == [1, -1, 1, -1]) and np.all(levels_order[-4]>levels_order[-2]>levels_order[-3]>levels_order[-1])) else bos[last_positions[-2]]
+                    level[last_positions[-2]] = levels_order[-3] if bos[last_positions[-2]] != 0 else 0
+
+                    # bullish choch
+                    choch[last_positions[-2]] = 1 if (np.all(highs_lows_order[-4:] == [-1, 1, -1, 1]) and np.all(levels_order[-1]>levels_order[-3]>levels_order[-4]>levels_order[-2])) else 0
+                    level[last_positions[-2]] = levels_order[-3] if choch[last_positions[-2]] != 0 else level[last_positions[-2]]
+
+                    # bearish choch
+                    choch[last_positions[-2]] = -1 if (np.all(highs_lows_order[-4:] == [1, -1, 1, -1]) and np.all(levels_order[-1]<levels_order[-3]<levels_order[-4]<levels_order[-2])) else choch[last_positions[-2]]
+                    level[last_positions[-2]] = levels_order[-3] if choch[last_positions[-2]] != 0 else level[last_positions[-2]]
+
+                last_positions.append(i)
+
+        broken = np.zeros(len(ohlc), dtype=np.int32)
+        for i in np.where(np.logical_or(bos != 0, choch != 0))[0]:
+            mask = np.zeros(len(ohlc), dtype=np.bool_)
+            # if the bos is 1 then check if the candles high has gone above the level
+            if bos[i] == 1 or choch[i] == 1:
+                mask = ohlc["close"][i + 2 :] > level[i]
+            # if the bos is -1 then check if the candles low has gone below the level
+            elif bos[i] == -1 or choch[i] == -1:
+                mask = ohlc["close"][i + 2 :] < level[i]
+            if np.any(mask):
+                j = np.argmax(mask) + i + 2
+                broken[i] = j
+        
+
+        bos = pd.Series(bos, name="BOS")
+        choch = pd.Series(choch, name="CHOCH")
+        level = pd.Series(level, name="Level")
+        broken = pd.Series(broken, name="BrokenIndex")
+
+        return pd.concat([bos, choch, level, broken], axis=1)
+
 
     @classmethod
     def ob(cls, ohlc: DataFrame) -> Series:
@@ -186,7 +272,7 @@ class smc:
         )
 
     @classmethod
-    def liquidity(cls, ohlc: DataFrame, range_percent=0.01, percentage_thresh=0.05) -> Series:
+    def liquidity(cls, ohlc: DataFrame) -> Series:
         """
         Liquidity
         Liquidity is when there are multiply highs within a small range of each other.
@@ -194,10 +280,10 @@ class smc:
         """
 
         # subtract the highest high from the lowest low
-        pip_range = (max(ohlc["high"]) - min(ohlc["low"])) * range_percent
+        pip_range = (max(ohlc["high"]) - min(ohlc["low"])) * cls.range_percent
 
         # get the highs and lows
-        highs_lows = cls.highs_lows(ohlc, percentage_thresh=percentage_thresh)
+        highs_lows = cls.highs_lows(ohlc)
         levels = highs_lows["Levels"]
         highs_lows = highs_lows["HighsLows"]
 
