@@ -33,7 +33,7 @@ Please take a look at smc.test.py for more detailed examples on how each indicat
 ```python
     smc.fvg(ohlc) # Fair Value Gap
     smc.highs_lows(ohlc) # Highs and Lows
-    smc.bos_choch(ohlc, filter_liquidity=False) # Detect BOS and CHoCH
+    smc.bos_choch(ohlc, close_break=True, filter_liquidity=False) # Detect BOS and CHoCH
     smc.ob(ohlc) # Order Block
     smc.liquidity(ohlc) # Liquidity
 ```

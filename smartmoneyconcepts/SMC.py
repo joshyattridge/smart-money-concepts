@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from pandas import DataFrame, Series
 from zigzag import *
-
+from finta import TA
 
 def inputvalidator(input_="ohlc"):
     def dfcheck(func):
@@ -53,9 +53,9 @@ def apply(decorator):
 @apply(inputvalidator(input_="ohlc"))
 class smc:
 
-    __version__ = "0.0.12"
+    __version__ = "0.0.13"
 
-    percentage_thresh = 0.005
+    atr_multiplier = 1.5
     range_percent=0.01
 
     @classmethod
@@ -108,17 +108,10 @@ class smc:
 
     @classmethod
     def highs_lows(cls, ohlc: DataFrame) -> Series:
+        pip_range = TA.ATR(ohlc, 14) / ohlc["close"].iloc[-1] * cls.atr_multiplier
+        pip_range = pip_range.iloc[-1]
 
-        # subtract the highest high from the lowest low
-        pip_range = max(ohlc["high"]) - min(ohlc["low"])
-        pip_range = pip_range * cls.percentage_thresh
-
-        # apply min-max scaling to the close for zigzag to work
-        close = ohlc["close"].copy()
-        close = ((close - close.min()) / (close.max() - close.min())) + 1
-        pip_range = (pip_range)/(ohlc["close"].iloc[-1]/(close.iloc[-1]-1))
-        
-        highs_lows = peak_valley_pivots(close, abs(pip_range), -abs(pip_range))
+        highs_lows = peak_valley_pivots(ohlc["close"], abs(pip_range), -abs(pip_range))
 
         still_adjusting = True
         while still_adjusting:
@@ -155,7 +148,7 @@ class smc:
         return pd.concat([highs_lows, levels], axis=1)
 
     @classmethod
-    def bos_choch(cls, ohlc: DataFrame, filter_liquidity=False) -> Series:
+    def bos_choch(cls, ohlc: DataFrame, close_break=True, filter_liquidity=False) -> Series:
         """
         BOS - Breakout Signal
         CHoCH - Change of Character signal
@@ -212,14 +205,32 @@ class smc:
             mask = np.zeros(len(ohlc), dtype=np.bool_)
             # if the bos is 1 then check if the candles high has gone above the level
             if bos[i] == 1 or choch[i] == 1:
-                mask = ohlc["close"][i + 2 :] > level[i]
+                mask = ohlc["close" if close_break else "high"][i + 2 :] > level[i]
             # if the bos is -1 then check if the candles low has gone below the level
             elif bos[i] == -1 or choch[i] == -1:
-                mask = ohlc["close"][i + 2 :] < level[i]
+                mask = ohlc["close" if close_break else "low"][i + 2 :] < level[i]
             if np.any(mask):
                 j = np.argmax(mask) + i + 2
                 broken[i] = j
         
+        # remove the ones that aren't broken
+        for i in np.where(np.logical_and(np.logical_or(bos != 0, choch != 0), broken == 0))[0]:
+            bos[i] = 0
+            choch[i] = 0
+            level[i] = 0
+        
+        # there can only be one high or low between the bos/choch and the broken index
+        for i in np.where(np.logical_or(bos != 0, choch != 0))[0]:
+            # count the number of highs or lows between the bos/choch and the broken index
+            count = 0
+            for j in range(i, broken[i]):
+                if highs_lows[j] != 0:
+                    count += 1
+            # if there is more than 1 high or low then remove the bos/choch
+            if count > 2:
+                bos[i] = 0
+                choch[i] = 0
+                level[i] = 0
 
         bos = pd.Series(bos, name="BOS")
         choch = pd.Series(choch, name="CHOCH")
