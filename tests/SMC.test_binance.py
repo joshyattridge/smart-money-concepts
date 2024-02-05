@@ -26,7 +26,7 @@ def import_data(symbol, start_str, timeframe):
 
 
 df = import_data("BTCUSDT", "2021-01-01", "1d")
-df = df.iloc[-500:]
+df = df.iloc[-100:]
 
 fig = go.Figure(
     data=[
@@ -191,7 +191,6 @@ def add_liquidity(fig):
                 )
             )
     return fig
-
 
 fig = add_FVG(fig)
 fig = add_highs_lows(fig)

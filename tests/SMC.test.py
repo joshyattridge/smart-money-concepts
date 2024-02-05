@@ -8,7 +8,7 @@ sys.path.append(os.path.abspath("../"))
 from smartmoneyconcepts.smc import smc
 
 df = pd.read_csv("EURUSD_15M.csv")
-df = df.iloc[-500:]
+df = df.iloc[-100:]
 df = df.reset_index(drop=True)
 fig = go.Figure(
     data=[
