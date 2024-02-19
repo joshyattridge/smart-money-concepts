@@ -26,7 +26,7 @@ def import_data(symbol, start_str, timeframe):
 
 
 df = import_data("BTCUSDT", "2021-01-01", "1d")
-df = df.iloc[-100:]
+df = df.iloc[-500:]
 
 fig = go.Figure(
     data=[
@@ -97,6 +97,7 @@ def add_highs_lows(fig):
 
     return fig
 
+
 def add_bos_choch(fig):
     bos_choch_data = smc.bos_choch(df)
 
@@ -126,6 +127,7 @@ def add_bos_choch(fig):
 
     return fig
 
+
 def add_OB(fig):
     ob_data = smc.ob(df)
 
@@ -149,6 +151,119 @@ def add_OB(fig):
                 fillcolor="purple",
                 opacity=0.5,
             )
+    return fig
+
+
+def add_volumized_OB(fig):
+    swing_length = 10
+    maxOrderBlocks = 30
+    maxDistanceToLastBar = 1750
+    obEndMethod = "Wick"
+
+    bullish_order_blocks, bearish_order_blocks = smc.volumized_ob(
+        df, maxDistanceToLastBar, swing_length, obEndMethod, maxOrderBlocks
+    )
+
+    def format_volume(volume):
+        if volume >= 1e12:
+            return f"{volume / 1e12:.3f}T"
+        elif volume >= 1e9:
+            return f"{volume / 1e9:.3f}B"
+        elif volume >= 1e6:
+            return f"{volume / 1e6:.3f}M"
+        elif volume >= 1e3:
+            return f"{volume / 1e3:.3f}k"
+        else:
+            return f"{volume:.2f}"
+
+    for ob in bullish_order_blocks:
+        fig.add_shape(
+            type="rect",
+            x0=ob["loc"],
+            y0=ob["bottom"],
+            x1=ob["breakTime"] if "breakTime" in ob else df.index[-1],
+            y1=ob["top"],
+            line=dict(color="Green"),
+            fillcolor="Green",
+            opacity=0.3,
+            name="Bullish OB",
+            legendgroup="bullish ob",
+            showlegend=True,
+        )
+
+        if "breakTime" in ob:
+            x_center = ob["loc"] + (ob["breakTime"] - ob["loc"]) / 2
+        else:
+            x_center = ob["loc"] + (df.index[-1] - ob["loc"]) / 2
+
+        y_center = (ob["bottom"] + ob["top"]) / 2
+        volume_text = format_volume(ob["volume"])
+        percentage = int(
+            (
+                min(ob["obhighvolume"], ob["oblowvolume"])
+                / max(ob["obhighvolume"], ob["oblowvolume"])
+            )
+            * 100.0
+        )
+
+        # Add annotation text
+        annotation_text = f"{volume_text} ({percentage}%)"
+
+        fig.add_annotation(
+            x=x_center,
+            y=y_center,
+            xref="x",
+            yref="y",
+            align="center",
+            text=annotation_text,
+            font=dict(color="white", size=8),
+            showarrow=False,
+        )
+
+    for ob in bearish_order_blocks:
+        fig.add_shape(
+            type="rect",
+            x0=ob["loc"],
+            y0=ob["bottom"],
+            x1=ob["breakTime"] if "breakTime" in ob else df.index[-1],
+            y1=ob["top"],
+            line=dict(color="Red"),
+            fillcolor="Red",
+            opacity=0.3,
+            name="Bearish OB",
+            legendgroup="bearish ob",
+            showlegend=True,
+        )
+
+        if "breakTime" in ob:
+            x_center = ob["loc"] + (ob["breakTime"] - ob["loc"]) / 2
+        else:
+            x_center = ob["loc"] + (df.index[-1] - ob["loc"]) / 2
+
+        y_center = (ob["bottom"] + ob["top"]) / 2
+        percentage = int(
+            (
+                min(ob["obhighvolume"], ob["oblowvolume"])
+                / max(ob["obhighvolume"], ob["oblowvolume"])
+            )
+            * 100.0
+        )
+
+        volume_text = format_volume(ob["volume"])
+
+        # Add annotation text
+        annotation_text = f"{volume_text} ({percentage}%)"
+
+        fig.add_annotation(
+            x=x_center,
+            y=y_center,
+            xref="x",
+            yref="y",
+            align="center",
+            text=annotation_text,
+            font=dict(color="white", size=8),
+            showarrow=False,
+        )
     return fig
 
 
@@ -192,13 +307,14 @@ def add_liquidity(fig):
             )
     return fig
 
+
 fig = add_FVG(fig)
 fig = add_highs_lows(fig)
 fig = add_bos_choch(fig)
 fig = add_OB(fig)
+fig = add_volumized_OB(fig)
 fig = add_liquidity(fig)
 fig.update_layout(xaxis_rangeslider_visible=False)
 fig.update_layout(showlegend=False)
 fig.update_layout(margin=dict(l=0, r=0, b=0, t=0))
 fig.write_image("test_binance.png")
-
