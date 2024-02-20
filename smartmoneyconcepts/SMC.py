@@ -58,6 +58,8 @@ class smc:
 
     atr_multiplier = 1.5
     range_percent = 0.01
+    swing_length = 10
+    close_mitigation = False
 
     @classmethod
     def fvg(cls, ohlc: DataFrame) -> Series:
@@ -442,255 +444,203 @@ class smc:
     def volumized_ob(
         cls,
         ohlc: pd.DataFrame,
-        maxDistanceToLastBar: int,
-        swingLength: int,
-        obEndMethod: str,
-        maxOrderBlocks: int,
-    ):
+        swing_length: int = swing_length,
+        close_mitigation: bool = close_mitigation,
+    ) -> DataFrame:
         """
         Volumized Order Blocks
         This method calculates volumized order blocks based on the provided OHLC data and parameters.
         """
-        ob_swings = {"top": [], "bottom": []}
+
+        ob_swing = np.zeros(len(ohlc), dtype=np.int32)
+        crossed = np.full(len(ohlc), False, dtype=bool)
+        ob = np.zeros(len(ohlc), dtype=np.int32)
+        top = np.zeros(len(ohlc), dtype=np.float32)
+        bottom = np.zeros(len(ohlc), dtype=np.float32)
+        obVolume = np.zeros(len(ohlc), dtype=np.float32)
+        lowVolume = np.zeros(len(ohlc), dtype=np.float32)
+        highVolume = np.zeros(len(ohlc), dtype=np.float32)
+        mitigated_index = np.zeros(len(ohlc), dtype=np.int32)
+        breaker = np.full(len(ohlc), False, dtype=bool)
+
         swing_type = 0
+        prev_swing_type = 0
 
         # Calculate the highest high and lowest low for the specified length
-        upper = ohlc["high"].rolling(window=swingLength).max()
-        lower = ohlc["low"].rolling(window=swingLength).min()
+        upper = ohlc["high"].rolling(window=swing_length).max()
+        lower = ohlc["low"].rolling(window=swing_length).min()
 
         # Concatenate upper and lower to df
         ohlc["upper"] = upper
         ohlc["lower"] = lower
 
-        # Initialize the previous swing type
-        prev_swing_type = 0
-
         # Iterate over each index in the dataframe
         for i in range(len(ohlc)):
             try:
                 # Determine the swing type
-                if ohlc["high"].iloc[i] > upper.iloc[i + swingLength]:
+                if ohlc["high"].iloc[i] > upper.iloc[i + swing_length]:
                     swing_type = 0
-                elif ohlc["low"].iloc[i] < lower.iloc[i + swingLength]:
+                elif ohlc["low"].iloc[i] < lower.iloc[i + swing_length]:
                     swing_type = 1
 
                 # Check if it's a new top or bottom
                 if swing_type == 0 and prev_swing_type != 0:
-                    ob_swings["top"].append(
-                        {
-                            "index": i,
-                            "loc": ohlc.index[i],
-                            "price": ohlc["high"].iloc[i],
-                            "volume": ohlc["volume"].iloc[i],
-                            "crossed": False,
-                        }
-                    )
+                    ob_swing[i] = 1
                 elif swing_type == 1 and prev_swing_type != 1:
-                    ob_swings["bottom"].append(
-                        {
-                            "index": i,
-                            "loc": ohlc.index[i],
-                            "price": ohlc["low"].iloc[i],
-                            "volume": ohlc["volume"].iloc[i],
-                            "crossed": False,
-                        }
-                    )
+                    ob_swing[i] = -1
 
                 # Update the previous swing type
                 prev_swing_type = swing_type
             except IndexError:
                 pass
 
-        bullish_order_blocks = []
-        bearish_order_blocks = []
-
-        last_bar_index = len(ohlc)
-        bar_index = max(0, last_bar_index - maxDistanceToLastBar)
-
-        if bar_index >= 0:
+        for i in range(len(ohlc)):
+            close_index = i
+            close_price = ohlc["close"].iloc[close_index]
 
             # Bullish Order Block
-            for close_index in range(bar_index, last_bar_index):
-                close_price = ohlc["close"].iloc[close_index]
-
-                if len(bullish_order_blocks) > 0:
-                    for i in range(len(bullish_order_blocks) - 1, -1, -1):
-                        currentOB = bullish_order_blocks[i]
-                        if not currentOB["breaker"]:
+            if len(ob[ob == 1]) > 0:
+                for j in range(len(ob) - 1, -1, -1):
+                    if ob[j] == 1:
+                        currentOB = j
+                        if not breaker[currentOB]:
                             if (
-                                obEndMethod == "Wick"
-                                and ohlc.low.iloc[close_index] < currentOB["bottom"]
+                                not close_mitigation
+                                and ohlc.low.iloc[close_index] < bottom[currentOB]
                             ) or (
-                                obEndMethod != "Wick"
+                                close_mitigation
                                 and min(
                                     ohlc.open.iloc[close_index],
                                     ohlc.close.iloc[close_index],
                                 )
-                                < currentOB["bottom"]
+                                < bottom[currentOB]
                             ):
-                                currentOB["breaker"] = True
-                                currentOB["breakTime"] = ohlc.index[close_index - 1]
-                                currentOB["bbvolume"] = ohlc["volume"].iloc[
-                                    close_index - 1
-                                ]
+                                breaker[currentOB] = True
+                                mitigated_index[currentOB] = close_index - 1
                         else:
-                            if ohlc.high.iloc[close_index] > currentOB["top"]:
-                                bullish_order_blocks.pop(i)
+                            if ohlc.high.iloc[close_index] > top[currentOB]:
+                                ob[j] = 0
 
-                last_top_index = None
-                for i in range(len(ob_swings["top"])):
-                    if ob_swings["top"][i]["index"] < close_index:
-                        last_top_index = i
-                if last_top_index is not None:
-                    swing_top_price = ob_swings["top"][last_top_index]["price"]
-                    if (
-                        close_price > swing_top_price
-                        and not ob_swings["top"][last_top_index]["crossed"]
-                    ):
-                        ob_swings["top"][last_top_index]["crossed"] = True
-                        boxBtm = ohlc.high.iloc[close_index - 1]
-                        boxTop = ohlc.low.iloc[close_index - 1]
-                        boxLoc = ohlc.index[close_index - 1]
-                        for j in range(
-                            1, close_index - ob_swings["top"][last_top_index]["index"]
-                        ):
-                            boxBtm = min(
-                                ohlc.low.iloc[
-                                    ob_swings["top"][last_top_index]["index"] + j
-                                ],
-                                boxBtm,
-                            )
+            last_top_index = None
+            for j in range(len(ob_swing)):
+                if ob_swing[j] == 1 and j < close_index:
+                    last_top_index = j
+            if last_top_index is not None:
+                swing_top_price = ohlc["high"].iloc[last_top_index]
+                if close_price > swing_top_price and not crossed[last_top_index]:
+                    crossed[last_top_index] = True
+                    obBtm = ohlc.high.iloc[close_index - 1]
+                    obTop = ohlc.low.iloc[close_index - 1]
+                    obIndex = close_index - 1
+                    for j in range(1, close_index - last_top_index):
+                        obBtm = min(
+                            ohlc.low.iloc[last_top_index + j],
+                            obBtm,
+                        )
+                        if obBtm == ohlc.low.iloc[last_top_index + j]:
+                            obTop = ohlc.high.iloc[last_top_index + j]
+                        obIndex = (
+                            last_top_index + j
+                            if obBtm == ohlc.low.iloc[last_top_index + j]
+                            else obIndex
+                        )
+
+                    ob[obIndex] = 1
+                    top[obIndex] = obTop
+                    bottom[obIndex] = obBtm
+                    obVolume[obIndex] = (
+                        ohlc["volume"].iloc[close_index]
+                        + ohlc["volume"].iloc[close_index - 1]
+                        + ohlc["volume"].iloc[close_index - 2]
+                    )
+                    lowVolume[obIndex] = ohlc["volume"].iloc[close_index - 2]
+                    highVolume[obIndex] = (
+                        ohlc["volume"].iloc[close_index]
+                        + ohlc["volume"].iloc[close_index - 1]
+                    )
+
+        for i in range(len(ohlc)):
+            close_index = i
+            close_price = ohlc["close"].iloc[close_index]
+
+            # Bearish Order Block
+            if len(ob[ob == -1]) > 0:
+                for j in range(len(ob) - 1, -1, -1):
+                    if ob[j] == -1:
+                        currentOB = j
+                        if not breaker[currentOB]:
                             if (
-                                boxBtm
-                                == ohlc.low.iloc[
-                                    ob_swings["top"][last_top_index]["index"] + j
-                                ]
-                            ):
-                                boxTop = ohlc.high.iloc[
-                                    ob_swings["top"][last_top_index]["index"] + j
-                                ]
-                            boxLoc = (
-                                ohlc.index[
-                                    ob_swings["top"][last_top_index]["index"] + j
-                                ]
-                                if boxBtm
-                                == ohlc.low.iloc[
-                                    ob_swings["top"][last_top_index]["index"] + j
-                                ]
-                                else boxLoc
-                            )
-
-                        newOrderBlockInfo = {
-                            "top": boxTop,
-                            "bottom": boxBtm,
-                            "volume": ohlc["volume"].iloc[close_index]
-                            + ohlc["volume"].iloc[close_index - 1]
-                            + ohlc["volume"].iloc[close_index - 2],
-                            "type": "Bull",
-                            "loc": boxLoc,
-                            "loc_number": close_index,
-                            "index": len(bullish_order_blocks),
-                            "oblowvolume": ohlc["volume"].iloc[close_index - 2],
-                            "obhighvolume": (
-                                ohlc["volume"].iloc[close_index]
-                                + ohlc["volume"].iloc[close_index - 1]
-                            ),
-                            "breaker": False,
-                        }
-                        bullish_order_blocks.insert(0, newOrderBlockInfo)
-                        if len(bullish_order_blocks) > maxOrderBlocks:
-                            bullish_order_blocks.pop()
-
-            for close_index in range(bar_index, last_bar_index):
-                close_price = ohlc["close"].iloc[close_index]
-
-                # Bearish Order Block
-                if len(bearish_order_blocks) > 0:
-                    for i in range(len(bearish_order_blocks) - 1, -1, -1):
-                        currentOB = bearish_order_blocks[i]
-                        if not currentOB["breaker"]:
-                            if (
-                                obEndMethod == "Wick"
-                                and ohlc.high.iloc[close_index] > currentOB["top"]
+                                not close_mitigation
+                                and ohlc.high.iloc[close_index] > top[currentOB]
                             ) or (
-                                obEndMethod != "Wick"
+                                close_mitigation
                                 and max(
                                     ohlc.open.iloc[close_index],
                                     ohlc.close.iloc[close_index],
                                 )
-                                > currentOB["top"]
+                                > top[currentOB]
                             ):
-                                currentOB["breaker"] = True
-                                currentOB["breakTime"] = ohlc.index[close_index]
-                                currentOB["bbvolume"] = ohlc["volume"].iloc[close_index]
+                                breaker[currentOB] = True
+                                mitigated_index[currentOB] = close_index
                         else:
-                            if ohlc.low.iloc[close_index] < currentOB["bottom"]:
-                                bearish_order_blocks.pop(i)
+                            if ohlc.low.iloc[close_index] < bottom[currentOB]:
+                                ob[j] = 0
 
-                last_btm_index = None
-                for i in range(len(ob_swings["bottom"])):
-                    if ob_swings["bottom"][i]["index"] < close_index:
-                        last_btm_index = i
-                if last_btm_index is not None:
-                    swing_btm_price = ob_swings["bottom"][last_btm_index]["price"]
-                    if (
-                        close_price < swing_btm_price
-                        and not ob_swings["bottom"][last_btm_index]["crossed"]
-                    ):
-                        ob_swings["bottom"][last_btm_index]["crossed"] = True
-                        boxBtm = ohlc.low.iloc[close_index - 1]
-                        boxTop = ohlc.high.iloc[close_index - 1]
-                        boxLoc = ohlc.index[close_index - 1]
-                        for j in range(
-                            1,
-                            close_index - ob_swings["bottom"][last_btm_index]["index"],
-                        ):
-                            boxTop = max(
-                                ohlc.high.iloc[
-                                    ob_swings["bottom"][last_btm_index]["index"] + j
-                                ],
-                                boxTop,
-                            )
-                            boxBtm = (
-                                ohlc.low.iloc[
-                                    ob_swings["bottom"][last_btm_index]["index"] + j
-                                ]
-                                if boxTop
-                                == ohlc.high.iloc[
-                                    ob_swings["bottom"][last_btm_index]["index"] + j
-                                ]
-                                else boxBtm
-                            )
-                            boxLoc = (
-                                ohlc.index[
-                                    ob_swings["bottom"][last_btm_index]["index"] + j
-                                ]
-                                if boxTop
-                                == ohlc.high.iloc[
-                                    ob_swings["bottom"][last_btm_index]["index"] + j
-                                ]
-                                else boxLoc
-                            )
+            last_btm_index = None
+            for j in range(len(ob_swing)):
+                if ob_swing[j] == -1 and j < close_index:
+                    last_btm_index = j
+            if last_btm_index is not None:
+                swing_btm_price = ohlc["low"].iloc[last_btm_index]
+                if close_price < swing_btm_price and not crossed[last_btm_index]:
+                    crossed[last_btm_index] = True
+                    obBtm = ohlc.low.iloc[close_index - 1]
+                    obTop = ohlc.high.iloc[close_index - 1]
+                    obIndex = close_index - 1
+                    for j in range(1, close_index - last_btm_index):
+                        obTop = max(ohlc.high.iloc[last_btm_index + j], obTop)
+                        obBtm = (
+                            ohlc.low.iloc[last_btm_index + j]
+                            if obTop == ohlc.high.iloc[last_btm_index + j]
+                            else obBtm
+                        )
+                        obIndex = (
+                            last_btm_index + j
+                            if obTop == ohlc.high.iloc[last_btm_index + j]
+                            else obIndex
+                        )
 
-                        newOrderBlockInfo = {
-                            "top": boxTop,
-                            "bottom": boxBtm,
-                            "volume": ohlc["volume"].iloc[close_index]
-                            + ohlc["volume"].iloc[close_index - 1]
-                            + ohlc["volume"].iloc[close_index - 2],
-                            "type": "Bear",
-                            "loc": boxLoc,
-                            "loc_number": close_index,
-                            "index": len(bearish_order_blocks),
-                            "oblowvolume": (
-                                ohlc["volume"].iloc[close_index]
-                                + ohlc["volume"].iloc[close_index - 1]
-                            ),
-                            "obhighvolume": ohlc["volume"].iloc[close_index - 2],
-                            "breaker": False,
-                        }
-                        bearish_order_blocks.insert(0, newOrderBlockInfo)
-                        if len(bearish_order_blocks) > maxOrderBlocks:
-                            bearish_order_blocks.pop()
+                    ob[obIndex] = -1
+                    top[obIndex] = obTop
+                    bottom[obIndex] = obBtm
+                    obVolume[obIndex] = (
+                        ohlc["volume"].iloc[close_index]
+                        + ohlc["volume"].iloc[close_index - 1]
+                        + ohlc["volume"].iloc[close_index - 2]
+                    )
+                    lowVolume[obIndex] = (
+                        ohlc["volume"].iloc[close_index]
+                        + ohlc["volume"].iloc[close_index - 1]
+                    )
+                    highVolume[obIndex] = ohlc["volume"].iloc[close_index - 2]
 
-        return bullish_order_blocks, bearish_order_blocks
+        ob_series = pd.Series(ob, name="OB")
+        top_series = pd.Series(top, name="Top")
+        bottom_series = pd.Series(bottom, name="Bottom")
+        obVolume_series = pd.Series(obVolume, name="OBVolume")
+        lowVolume_series = pd.Series(lowVolume, name="LowVolume")
+        highVolume_series = pd.Series(highVolume, name="HighVolume")
+        mitigated_index_series = pd.Series(mitigated_index, name="MitigatedIndex")
+
+        return pd.concat(
+            [
+                ob_series,
+                top_series,
+                bottom_series,
+                obVolume_series,
+                lowVolume_series,
+                highVolume_series,
+                mitigated_index_series,
+            ],
+            axis=1,
+        )
