@@ -441,15 +441,17 @@ class smc:
         return pd.concat([liquidity, level, liquidity_end, liquidity_swept], axis=1)
 
     @classmethod
-    def volumized_ob(
+    def vob(
         cls,
         ohlc: pd.DataFrame,
         swing_length: int = swing_length,
         close_mitigation: bool = close_mitigation,
     ) -> DataFrame:
         """
-        Volumized Order Blocks
-        This method calculates volumized order blocks based on the provided OHLC data and parameters.
+        VOB - Volumized Order Blocks
+        This method detects order blocks when there is a high amount of market orders exist on a price range.
+        OBVolume = volume + 2 last volumes amounts
+        Percentage = strength of order block (min(highVolume, lowVolume)/max(highVolume,lowVolume))
         """
 
         ob_swing = np.zeros(len(ohlc), dtype=np.int32)
@@ -460,6 +462,7 @@ class smc:
         obVolume = np.zeros(len(ohlc), dtype=np.float32)
         lowVolume = np.zeros(len(ohlc), dtype=np.float32)
         highVolume = np.zeros(len(ohlc), dtype=np.float32)
+        percentage = np.zeros(len(ohlc), dtype=np.int32)
         mitigated_index = np.zeros(len(ohlc), dtype=np.int32)
         breaker = np.full(len(ohlc), False, dtype=bool)
 
@@ -519,7 +522,9 @@ class smc:
                                 mitigated_index[currentOB] = close_index - 1
                         else:
                             if ohlc.high.iloc[close_index] > top[currentOB]:
-                                ob[j] = 0
+                                ob[j] = top[j] = bottom[j] = obVolume[j] = lowVolume[
+                                    j
+                                ] = highVolume[j] = 0.0
 
             last_top_index = None
             for j in range(len(ob_swing)):
@@ -558,6 +563,10 @@ class smc:
                         ohlc["volume"].iloc[close_index]
                         + ohlc["volume"].iloc[close_index - 1]
                     )
+                    percentage[obIndex] = (
+                        np.min([highVolume[obIndex], lowVolume[obIndex]], axis=0)
+                        / np.max([highVolume[obIndex], lowVolume[obIndex]], axis=0)
+                    ) * 100.0
 
         for i in range(len(ohlc)):
             close_index = i
@@ -584,7 +593,9 @@ class smc:
                                 mitigated_index[currentOB] = close_index
                         else:
                             if ohlc.low.iloc[close_index] < bottom[currentOB]:
-                                ob[j] = 0
+                                ob[j] = top[j] = bottom[j] = obVolume[j] = lowVolume[
+                                    j
+                                ] = highVolume[j] = 0.0
 
             last_btm_index = None
             for j in range(len(ob_swing)):
@@ -623,14 +634,17 @@ class smc:
                         + ohlc["volume"].iloc[close_index - 1]
                     )
                     highVolume[obIndex] = ohlc["volume"].iloc[close_index - 2]
+                    percentage[obIndex] = (
+                        np.min([highVolume[obIndex], lowVolume[obIndex]], axis=0)
+                        / np.max([highVolume[obIndex], lowVolume[obIndex]], axis=0)
+                    ) * 100.0
 
         ob_series = pd.Series(ob, name="OB")
         top_series = pd.Series(top, name="Top")
         bottom_series = pd.Series(bottom, name="Bottom")
         obVolume_series = pd.Series(obVolume, name="OBVolume")
-        lowVolume_series = pd.Series(lowVolume, name="LowVolume")
-        highVolume_series = pd.Series(highVolume, name="HighVolume")
         mitigated_index_series = pd.Series(mitigated_index, name="MitigatedIndex")
+        percentage_series = pd.Series(percentage, name="Percentage")
 
         return pd.concat(
             [
@@ -638,9 +652,8 @@ class smc:
                 top_series,
                 bottom_series,
                 obVolume_series,
-                lowVolume_series,
-                highVolume_series,
                 mitigated_index_series,
+                percentage_series,
             ],
             axis=1,
         )

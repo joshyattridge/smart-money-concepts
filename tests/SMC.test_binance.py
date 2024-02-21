@@ -154,9 +154,9 @@ def add_OB(fig):
     return fig
 
 
-def add_volumized_OB(fig):
+def add_VOB(fig):
 
-    ob_data = smc.volumized_ob(df)
+    ob_data = smc.vob(df)
 
     def format_volume(volume):
         if volume >= 1e12:
@@ -198,16 +198,8 @@ def add_volumized_OB(fig):
 
             y_center = (ob_data["Bottom"][i] + ob_data["Top"][i]) / 2
             volume_text = format_volume(ob_data["OBVolume"][i])
-            percentage = int(
-                (
-                    min(ob_data["HighVolume"][i], ob_data["LowVolume"][i])
-                    / max(ob_data["HighVolume"][i], ob_data["LowVolume"][i])
-                )
-                * 100.0
-            )
-
             # Add annotation text
-            annotation_text = f"{volume_text} ({percentage}%)"
+            annotation_text = f'{volume_text} ({ob_data["Percentage"][i]}%)'
 
             fig.add_annotation(
                 x=x_center,
@@ -247,18 +239,9 @@ def add_volumized_OB(fig):
                 x_center = df.index[int(i + (len(df) - i) / 2)]
 
             y_center = (ob_data["Bottom"][i] + ob_data["Top"][i]) / 2
-            percentage = int(
-                (
-                    min(ob_data["HighVolume"][i], ob_data["LowVolume"][i])
-                    / max(ob_data["HighVolume"][i], ob_data["LowVolume"][i])
-                )
-                * 100.0
-            )
-
             volume_text = format_volume(ob_data["OBVolume"][i])
-
             # Add annotation text
-            annotation_text = f"{volume_text} ({percentage}%)"
+            annotation_text = f'{volume_text} ({ob_data["Percentage"][i]}%)'
 
             fig.add_annotation(
                 x=x_center,
@@ -314,12 +297,12 @@ def add_liquidity(fig):
     return fig
 
 
-# fig = add_FVG(fig)
-# fig = add_highs_lows(fig)
-# fig = add_bos_choch(fig)
-# fig = add_OB(fig)
-fig = add_volumized_OB(fig)
-# fig = add_liquidity(fig)
+fig = add_FVG(fig)
+fig = add_highs_lows(fig)
+fig = add_bos_choch(fig)
+fig = add_OB(fig)
+fig = add_VOB(fig)
+fig = add_liquidity(fig)
 fig.update_layout(xaxis_rangeslider_visible=False)
 fig.update_layout(showlegend=False)
 fig.update_layout(margin=dict(l=0, r=0, b=0, t=0))
