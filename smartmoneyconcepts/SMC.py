@@ -157,6 +157,45 @@ class smc:
         return pd.concat([highs_lows, levels], axis=1)
 
     @classmethod
+    def swing_tops_bottoms(
+        cls, ohlc: DataFrame, swing_length: int = swing_length
+    ) -> Series:
+
+        swing_tops_bottoms = np.zeros(len(ohlc), dtype=np.int32)
+        swing_type = 0
+        prev_swing_type = 0
+
+        # Calculate the highest high and lowest low for the specified length
+        upper = ohlc["high"].rolling(window=swing_length).max()
+        lower = ohlc["low"].rolling(window=swing_length).min()
+
+        # Concatenate upper and lower to df
+        ohlc["upper"] = upper
+        ohlc["lower"] = lower
+
+        # Iterate over each index in the dataframe
+        for i in range(len(ohlc)):
+            try:
+                # Determine the swing type
+                if ohlc["high"].iloc[i] > upper.iloc[i + swing_length]:
+                    swing_type = 0
+                elif ohlc["low"].iloc[i] < lower.iloc[i + swing_length]:
+                    swing_type = 1
+
+                # Check if it's a new top or bottom
+                if swing_type == 0 and prev_swing_type != 0:
+                    swing_tops_bottoms[i] = 1
+                elif swing_type == 1 and prev_swing_type != 1:
+                    swing_tops_bottoms[i] = -1
+
+                # Update the previous swing type
+                prev_swing_type = swing_type
+            except IndexError:
+                pass
+
+        return pd.Series(swing_tops_bottoms)
+
+    @classmethod
     def bos_choch(
         cls, ohlc: DataFrame, close_break=True, filter_liquidity=False
     ) -> Series:
@@ -454,7 +493,6 @@ class smc:
         Percentage = strength of order block (min(highVolume, lowVolume)/max(highVolume,lowVolume))
         """
 
-        ob_swing = np.zeros(len(ohlc), dtype=np.int32)
         crossed = np.full(len(ohlc), False, dtype=bool)
         ob = np.zeros(len(ohlc), dtype=np.int32)
         top = np.zeros(len(ohlc), dtype=np.float32)
@@ -466,36 +504,7 @@ class smc:
         mitigated_index = np.zeros(len(ohlc), dtype=np.int32)
         breaker = np.full(len(ohlc), False, dtype=bool)
 
-        swing_type = 0
-        prev_swing_type = 0
-
-        # Calculate the highest high and lowest low for the specified length
-        upper = ohlc["high"].rolling(window=swing_length).max()
-        lower = ohlc["low"].rolling(window=swing_length).min()
-
-        # Concatenate upper and lower to df
-        ohlc["upper"] = upper
-        ohlc["lower"] = lower
-
-        # Iterate over each index in the dataframe
-        for i in range(len(ohlc)):
-            try:
-                # Determine the swing type
-                if ohlc["high"].iloc[i] > upper.iloc[i + swing_length]:
-                    swing_type = 0
-                elif ohlc["low"].iloc[i] < lower.iloc[i + swing_length]:
-                    swing_type = 1
-
-                # Check if it's a new top or bottom
-                if swing_type == 0 and prev_swing_type != 0:
-                    ob_swing[i] = 1
-                elif swing_type == 1 and prev_swing_type != 1:
-                    ob_swing[i] = -1
-
-                # Update the previous swing type
-                prev_swing_type = swing_type
-            except IndexError:
-                pass
+        ob_swing = cls.swing_tops_bottoms(ohlc, swing_length)
 
         for i in range(len(ohlc)):
             close_index = i
