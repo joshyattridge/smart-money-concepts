@@ -98,6 +98,36 @@ def add_highs_lows(fig):
     return fig
 
 
+def add_swing_tops_bottoms(fig):
+    swing_tops_bottoms_data = smc.swing_tops_bottoms(df)
+
+    indexs = []
+    levels = []
+    for i in range(len(swing_tops_bottoms_data)):
+        if swing_tops_bottoms_data["SwingTopsBottoms"][i] != 0:
+            indexs.append(i)
+            levels.append(swing_tops_bottoms_data["Levels"][i])
+
+    # plot these lines on a graph
+    for i in range(len(indexs) - 1):
+        fig.add_trace(
+            go.Scatter(
+                x=[df.index[indexs[i]], df.index[indexs[i + 1]]],
+                y=[levels[i], levels[i + 1]],
+                mode="lines",
+                line=dict(
+                    color=(
+                        "green"
+                        if swing_tops_bottoms_data["SwingTopsBottoms"][indexs[i]] == -1
+                        else "red"
+                    ),
+                ),
+            )
+        )
+
+    return fig
+
+
 def add_bos_choch(fig):
     bos_choch_data = smc.bos_choch(df)
 
@@ -299,6 +329,7 @@ def add_liquidity(fig):
 
 fig = add_FVG(fig)
 fig = add_highs_lows(fig)
+fig = add_swing_tops_bottoms(fig)
 fig = add_bos_choch(fig)
 fig = add_OB(fig)
 fig = add_VOB(fig)
