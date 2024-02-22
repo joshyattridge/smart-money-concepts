@@ -193,7 +193,16 @@ class smc:
             except IndexError:
                 pass
 
-        return pd.Series(swing_tops_bottoms)
+        levels = np.where(
+            swing_tops_bottoms != 0,
+            np.where(swing_tops_bottoms == 1, ohlc["high"], ohlc["low"]),
+            np.nan,
+        )
+
+        swing_tops_bottoms = pd.Series(swing_tops_bottoms, name="SwingTopsBottoms")
+        levels = pd.Series(levels, name="Levels")
+
+        return pd.concat([swing_tops_bottoms, levels], axis=1)
 
     @classmethod
     def bos_choch(
@@ -505,6 +514,7 @@ class smc:
         breaker = np.full(len(ohlc), False, dtype=bool)
 
         ob_swing = cls.swing_tops_bottoms(ohlc, swing_length)
+        ob_swing = ob_swing["SwingTopsBottoms"]
 
         for i in range(len(ohlc)):
             close_index = i
@@ -533,7 +543,9 @@ class smc:
                             if ohlc.high.iloc[close_index] > top[currentOB]:
                                 ob[j] = top[j] = bottom[j] = obVolume[j] = lowVolume[
                                     j
-                                ] = highVolume[j] = 0.0
+                                ] = highVolume[j] = mitigated_index[j] = percentage[
+                                    j
+                                ] = 0.0
 
             last_top_index = None
             for j in range(len(ob_swing)):
@@ -604,7 +616,9 @@ class smc:
                             if ohlc.low.iloc[close_index] < bottom[currentOB]:
                                 ob[j] = top[j] = bottom[j] = obVolume[j] = lowVolume[
                                     j
-                                ] = highVolume[j] = 0.0
+                                ] = highVolume[j] = mitigated_index[j] = percentage[
+                                    j
+                                ] = 0.0
 
             last_btm_index = None
             for j in range(len(ob_swing)):
