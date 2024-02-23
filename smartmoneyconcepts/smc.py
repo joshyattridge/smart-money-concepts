@@ -10,7 +10,6 @@ def inputvalidator(input_="ohlc"):
     def dfcheck(func):
         @wraps(func)
         def wrap(*args, **kwargs):
-
             args = list(args)
             i = 0 if isinstance(args[0], pd.DataFrame) else 1
 
@@ -53,8 +52,7 @@ def apply(decorator):
 
 @apply(inputvalidator(input_="ohlc"))
 class smc:
-
-    __version__ = "0.0.13"
+    __version__ = "0.0.14"
 
     atr_multiplier = 1.5
     range_percent = 0.01
@@ -79,14 +77,19 @@ class smc:
                 & (ohlc["close"] < ohlc["open"])
             ),
             np.where(ohlc["close"] > ohlc["open"], 1, -1),
-            0,
+            np.nan,
         )
+
         top = np.where(
             ohlc["close"] > ohlc["open"], ohlc["low"].shift(-1), ohlc["low"].shift(1)
         )
         bottom = np.where(
             ohlc["close"] > ohlc["open"], ohlc["high"].shift(1), ohlc["high"].shift(-1)
         )
+
+        nan_indices = np.isnan(fvg)
+        top[nan_indices] = np.nan
+        bottom[nan_indices] = np.nan
 
         mitigated_index = np.zeros(len(ohlc), dtype=np.int32)
         for i in np.where(fvg != 0)[0]:
@@ -98,6 +101,9 @@ class smc:
             if np.any(mask):
                 j = np.argmax(mask) + i + 2
                 mitigated_index[i] = j
+
+        # if fvg is np.nan then set mitigated_index to np.nan
+        mitigated_index = np.where(np.isnan(fvg), np.nan, mitigated_index)
 
         # create a series for each of the keys in the dictionary
         fvg = pd.Series(fvg, name="FVG")
@@ -160,7 +166,6 @@ class smc:
     def swing_tops_bottoms(
         cls, ohlc: DataFrame, swing_length: int = swing_length
     ) -> Series:
-
         swing_tops_bottoms = np.zeros(len(ohlc), dtype=np.int32)
         swing_type = 0
         prev_swing_type = 0

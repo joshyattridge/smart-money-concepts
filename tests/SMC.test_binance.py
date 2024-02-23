@@ -4,6 +4,8 @@ import sys
 import os
 from binance.client import Client
 from datetime import datetime
+import numpy as np
+import time
 
 sys.path.append(os.path.abspath("../"))
 from smartmoneyconcepts.smc import smc
@@ -26,7 +28,7 @@ def import_data(symbol, start_str, timeframe):
 
 
 df = import_data("BTCUSDT", "2021-01-01", "1d")
-df = df.iloc[-500:]
+df = df.iloc[-100:]
 
 fig = go.Figure(
     data=[
@@ -42,11 +44,11 @@ fig = go.Figure(
 
 
 def add_FVG(fig):
+    start = time.time()
     fvg_data = smc.fvg(df)
-    # plot a rectangle for each fvg
     for i in range(len(fvg_data["FVG"])):
-        if fvg_data["FVG"][i] != 0:
-            x1 = (
+        if not np.isnan(fvg_data["FVG"][i]):
+            x1 = int(
                 fvg_data["MitigatedIndex"][i]
                 if fvg_data["MitigatedIndex"][i] != 0
                 else len(df) - 1
@@ -185,7 +187,6 @@ def add_OB(fig):
 
 
 def add_VOB(fig):
-
     ob_data = smc.vob(df)
 
     def format_volume(volume):
@@ -328,12 +329,12 @@ def add_liquidity(fig):
 
 
 fig = add_FVG(fig)
-fig = add_highs_lows(fig)
-fig = add_swing_tops_bottoms(fig)
-fig = add_bos_choch(fig)
-fig = add_OB(fig)
-fig = add_VOB(fig)
-fig = add_liquidity(fig)
+# fig = add_highs_lows(fig)
+# fig = add_swing_tops_bottoms(fig)
+# fig = add_bos_choch(fig)
+# fig = add_OB(fig)
+# fig = add_VOB(fig)
+# fig = add_liquidity(fig)
 fig.update_layout(xaxis_rangeslider_visible=False)
 fig.update_layout(showlegend=False)
 fig.update_layout(margin=dict(l=0, r=0, b=0, t=0))
