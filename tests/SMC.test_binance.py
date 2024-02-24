@@ -106,7 +106,7 @@ def add_swing_tops_bottoms(fig):
     indexs = []
     levels = []
     for i in range(len(swing_tops_bottoms_data)):
-        if swing_tops_bottoms_data["SwingTopsBottoms"][i] != 0:
+        if not np.isnan(swing_tops_bottoms_data["SwingTopsBottoms"][i]):
             indexs.append(i)
             levels.append(swing_tops_bottoms_data["Levels"][i])
 
@@ -329,8 +329,8 @@ def add_liquidity(fig):
 
 
 # fig = add_FVG(fig)
-fig = add_highs_lows(fig)
-# fig = add_swing_tops_bottoms(fig)
+# fig = add_highs_lows(fig)
+fig = add_swing_tops_bottoms(fig)
 # fig = add_bos_choch(fig)
 # fig = add_OB(fig)
 # fig = add_VOB(fig)

@@ -200,8 +200,12 @@ class smc:
             except IndexError:
                 pass
 
+        swing_tops_bottoms = np.where(
+            swing_tops_bottoms != 0, swing_tops_bottoms, np.nan
+        )
+
         levels = np.where(
-            swing_tops_bottoms != 0,
+            ~np.isnan(swing_tops_bottoms),
             np.where(swing_tops_bottoms == 1, ohlc["high"], ohlc["low"]),
             np.nan,
         )
