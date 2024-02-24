@@ -151,8 +151,10 @@ class smc:
                         else:
                             highs_lows[i + 1] = -1
 
+        highs_lows = np.where(highs_lows != 0, highs_lows, np.nan)
+
         levels = np.where(
-            highs_lows != 0,
+            ~np.isnan(highs_lows),
             np.where(highs_lows == 1, ohlc["high"], ohlc["low"]),
             np.nan,
         )

@@ -76,7 +76,7 @@ def add_highs_lows(fig):
     indexs = []
     levels = []
     for i in range(len(highs_lows_data)):
-        if highs_lows_data["HighsLows"][i] != 0:
+        if not np.isnan(highs_lows_data["HighsLows"][i]):
             indexs.append(i)
             levels.append(highs_lows_data["Levels"][i])
 
@@ -328,8 +328,8 @@ def add_liquidity(fig):
     return fig
 
 
-fig = add_FVG(fig)
-# fig = add_highs_lows(fig)
+# fig = add_FVG(fig)
+fig = add_highs_lows(fig)
 # fig = add_swing_tops_bottoms(fig)
 # fig = add_bos_choch(fig)
 # fig = add_OB(fig)
