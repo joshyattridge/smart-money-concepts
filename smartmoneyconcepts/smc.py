@@ -216,9 +216,7 @@ class smc:
         return pd.concat([swing_tops_bottoms, levels], axis=1)
 
     @classmethod
-    def bos_choch(
-        cls, ohlc: DataFrame, close_break=True, filter_liquidity=False
-    ) -> Series:
+    def bos_choch(cls, ohlc: DataFrame, close_break=True) -> Series:
         """
         BOS - Breakout Signal
         CHoCH - Change of Character signal
@@ -230,14 +228,6 @@ class smc:
         levels = highs_lows["Levels"]
         highs_lows = highs_lows["HighsLows"]
 
-        # filter out the highs and lows used if it is aligned with liquidity
-        if filter_liquidity:
-            liquidity = cls.liquidity(ohlc)
-            liquidity = liquidity["Liquidity"]
-            for i in range(len(highs_lows)):
-                if liquidity[i] != 0 and highs_lows[i] != 0:
-                    highs_lows[i] = 0
-
         levels_order = []
         highs_lows_order = []
 
@@ -248,11 +238,13 @@ class smc:
         last_positions = []
 
         for i in range(len(highs_lows)):
-            if highs_lows[i] != 0:
+            print(i, highs_lows[i])
+            if not np.isnan(highs_lows[i]):
                 levels_order.append(levels[i])
                 highs_lows_order.append(highs_lows[i])
                 if len(levels_order) >= 4:
                     # bullish bos
+                    print(highs_lows_order[-4:])
                     bos[last_positions[-2]] = (
                         1
                         if (
@@ -351,18 +343,11 @@ class smc:
             choch[i] = 0
             level[i] = 0
 
-        # there can only be one high or low between the bos/choch and the broken index
-        for i in np.where(np.logical_or(bos != 0, choch != 0))[0]:
-            # count the number of highs or lows between the bos/choch and the broken index
-            count = 0
-            for j in range(i, broken[i]):
-                if highs_lows[j] != 0:
-                    count += 1
-            # if there is more than 1 high or low then remove the bos/choch
-            if count > 2:
-                bos[i] = 0
-                choch[i] = 0
-                level[i] = 0
+        # replace all the 0s with np.nan
+        bos = np.where(bos != 0, bos, np.nan)
+        choch = np.where(choch != 0, choch, np.nan)
+        level = np.where(level != 0, level, np.nan)
+        broken = np.where(broken != 0, broken, np.nan)
 
         bos = pd.Series(bos, name="BOS")
         choch = pd.Series(choch, name="CHOCH")
