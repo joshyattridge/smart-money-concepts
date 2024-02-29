@@ -367,8 +367,11 @@ class smc:
         fvg = cls.fvg(ohlc)
 
         ob = np.where(
-            (fvg["FVG"].shift(-1) != 0) & (fvg["FVG"] == 0), fvg["FVG"].shift(-1), 0
+            (fvg["FVG"].shift(-1) != 0) & (~np.isnan(fvg["FVG"])),
+            fvg["FVG"].shift(-1),
+            np.nan,
         )
+
         # top is equal to the current candles high unless the ob is -1 and the next candles high is higher than the current candles high then top is equal to the next candles high
         top = np.where(
             (ob == -1) & (ohlc["high"].shift(-1) > ohlc["high"]),
@@ -382,6 +385,9 @@ class smc:
             ohlc["low"],
         )
 
+        top = np.where(np.isnan(ob), np.nan, top)
+        bottom = np.where(np.isnan(ob), np.nan, bottom)
+
         # set mitigated to np.nan
         mitigated_index = np.zeros(len(ohlc), dtype=np.int32)
         for i in np.where(ob != 0)[0]:
@@ -393,6 +399,8 @@ class smc:
             if np.any(mask):
                 j = np.argmax(mask) + i + 2
                 mitigated_index[i] = j
+
+        mitigated_index = np.where(np.isnan(ob), np.nan, mitigated_index)
 
         # create a series for each of the keys in the dictionary
         ob = pd.Series(ob, name="OB")

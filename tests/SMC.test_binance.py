@@ -165,8 +165,8 @@ def add_OB(fig):
 
     # plot the same way as FVG
     for i in range(len(ob_data["OB"])):
-        if ob_data["OB"][i] == 1:
-            x1 = (
+        if not np.isnan(ob_data["OB"][i]):
+            x1 = int(
                 ob_data["MitigatedIndex"][i]
                 if ob_data["MitigatedIndex"][i] != 0
                 else len(df) - 1
@@ -331,8 +331,8 @@ def add_liquidity(fig):
 # fig = add_FVG(fig)
 # fig = add_highs_lows(fig)
 # fig = add_swing_tops_bottoms(fig)
-fig = add_bos_choch(fig)
-# fig = add_OB(fig)
+# fig = add_bos_choch(fig)
+fig = add_OB(fig)
 # fig = add_VOB(fig)
 # fig = add_liquidity(fig)
 fig.update_layout(xaxis_rangeslider_visible=False)
