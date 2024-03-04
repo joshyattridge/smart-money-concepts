@@ -49,7 +49,6 @@ This project is still in BETA so please feel free to contribute to the project. 
 1. Fork it (https://github.com/joshyattridge/smartmoneyconcepts/fork).
 2. Study how it's implemented.
 3. Create your feature branch (git checkout -b my-new-feature).
-4. Run black code formatter on the finta.py to ensure uniform code style.
 5. Commit your changes (git commit -am 'Add some feature').
 6. Push to the branch (git push origin my-new-feature).
 7. Create a new Pull Request.
