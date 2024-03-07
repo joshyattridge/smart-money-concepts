@@ -2,7 +2,7 @@
 
 The Smart Money Concepts Python Indicator is a sophisticated financial tool developed for traders and investors to gain insights into market sentiment, trends, and potential reversals. This indicator is built using Python, a versatile programming language known for its data analysis and visualization capabilities.
 
-![alt text](https://github.com/joshyattridge/smart-money-concepts/blob/4347d840f625d1334f10713d18213b98da1303fb/tests/test_binance.png)
+![alt text](https://github.com/joshyattridge/smart-money-concepts/blob/21656dd807c4077f345b6cbf29b1bc37672628e9/tests/test_binance.png)
 
 ## Installation
 
