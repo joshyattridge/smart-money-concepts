@@ -404,12 +404,12 @@ class smc:
 
                         elif (
                                 not close_mitigation
-                                and ohlc.low.iloc[close_index] < bottom[currentOB]
+                                and ohlc["low"].iloc[close_index] < bottom[currentOB]
                             ) or (
                                 close_mitigation
                                 and min(
-                                    ohlc.open.iloc[close_index],
-                                    ohlc.close.iloc[close_index],
+                                    ohlc["open"].iloc[close_index],
+                                    ohlc["close"].iloc[close_index],
                                 )
                                 < bottom[currentOB]
                             ):
@@ -423,19 +423,19 @@ class smc:
                 swing_top_price = ohlc["high"].iloc[last_top_index]
                 if close_price > swing_top_price and not crossed[last_top_index]:
                     crossed[last_top_index] = True
-                    obBtm = ohlc.high.iloc[close_index - 1]
-                    obTop = ohlc.low.iloc[close_index - 1]
+                    obBtm = ohlc["high"].iloc[close_index - 1]
+                    obTop = ohlc["low"].iloc[close_index - 1]
                     obIndex = close_index - 1
                     for j in range(1, close_index - last_top_index):
                         obBtm = min(
-                            ohlc.low.iloc[last_top_index + j],
+                            ohlc["low"].iloc[last_top_index + j],
                             obBtm,
                         )
-                        if obBtm == ohlc.low.iloc[last_top_index + j]:
-                            obTop = ohlc.high.iloc[last_top_index + j]
+                        if obBtm == ohlc["low"].iloc[last_top_index + j]:
+                            obTop = ohlc["high"].iloc[last_top_index + j]
                         obIndex = (
                             last_top_index + j
-                            if obBtm == ohlc.low.iloc[last_top_index + j]
+                            if obBtm == ohlc["low"].iloc[last_top_index + j]
                             else obIndex
                         )
 
@@ -476,12 +476,12 @@ class smc:
 
                         elif (
                                 not close_mitigation
-                                and ohlc.high.iloc[close_index] > top[currentOB]
+                                and ohlc["high"].iloc[close_index] > top[currentOB]
                             ) or (
                                 close_mitigation
                                 and max(
-                                    ohlc.open.iloc[close_index],
-                                    ohlc.close.iloc[close_index],
+                                    ohlc["open"].iloc[close_index],
+                                    ohlc["close"].iloc[close_index],
                                 )
                                 > top[currentOB]
                             ):
@@ -495,19 +495,19 @@ class smc:
                 swing_btm_price = ohlc["low"].iloc[last_btm_index]
                 if close_price < swing_btm_price and not crossed[last_btm_index]:
                     crossed[last_btm_index] = True
-                    obBtm = ohlc.low.iloc[close_index - 1]
-                    obTop = ohlc.high.iloc[close_index - 1]
+                    obBtm = ohlc["low"].iloc[close_index - 1]
+                    obTop = ohlc["high"].iloc[close_index - 1]
                     obIndex = close_index - 1
                     for j in range(1, close_index - last_btm_index):
-                        obTop = max(ohlc.high.iloc[last_btm_index + j], obTop)
+                        obTop = max(ohlc["high"].iloc[last_btm_index + j], obTop)
                         obBtm = (
-                            ohlc.low.iloc[last_btm_index + j]
-                            if obTop == ohlc.high.iloc[last_btm_index + j]
+                            ohlc["low"].iloc[last_btm_index + j]
+                            if obTop == ohlc["high"].iloc[last_btm_index + j]
                             else obBtm
                         )
                         obIndex = (
                             last_btm_index + j
-                            if obTop == ohlc.high.iloc[last_btm_index + j]
+                            if obTop == ohlc["high"].iloc[last_btm_index + j]
                             else obIndex
                         )
 
