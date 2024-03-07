@@ -2,15 +2,12 @@ from functools import wraps
 import pandas as pd
 import numpy as np
 from pandas import DataFrame, Series
-from zigzag import *
-from finta import TA
 
 
 def inputvalidator(input_="ohlc"):
     def dfcheck(func):
         @wraps(func)
         def wrap(*args, **kwargs):
-
             args = list(args)
             i = 0 if isinstance(args[0], pd.DataFrame) else 1
 
@@ -53,13 +50,7 @@ def apply(decorator):
 
 @apply(inputvalidator(input_="ohlc"))
 class smc:
-
-    __version__ = "0.0.13"
-
-    atr_multiplier = 1.5
-    range_percent = 0.01
-    swing_length = 10
-    close_mitigation = False
+    __version__ = "0.0.15"
 
     @classmethod
     def fvg(cls, ohlc: DataFrame) -> Series:
@@ -67,6 +58,12 @@ class smc:
         FVG - Fair Value Gap
         A fair value gap is when the previous high is lower than the next low if the current candle is bullish.
         Or when the previous low is higher than the next high if the current candle is bearish.
+
+        returns:
+        FVG = 1 if bullish fair value gap, -1 if bearish fair value gap
+        Top = the top of the fair value gap
+        Bottom = the bottom of the fair value gap
+        MitigatedIndex = the index of the candle that mitigated the fair value gap
         """
 
         fvg = np.where(
@@ -79,17 +76,31 @@ class smc:
                 & (ohlc["close"] < ohlc["open"])
             ),
             np.where(ohlc["close"] > ohlc["open"], 1, -1),
-            0,
+            np.nan,
         )
+
         top = np.where(
-            ohlc["close"] > ohlc["open"], ohlc["low"].shift(-1), ohlc["low"].shift(1)
+            ~np.isnan(fvg),
+            np.where(
+                ohlc["close"] > ohlc["open"],
+                ohlc["low"].shift(-1),
+                ohlc["low"].shift(1),
+            ),
+            np.nan,
         )
+
         bottom = np.where(
-            ohlc["close"] > ohlc["open"], ohlc["high"].shift(1), ohlc["high"].shift(-1)
+            ~np.isnan(fvg),
+            np.where(
+                ohlc["close"] > ohlc["open"],
+                ohlc["high"].shift(1),
+                ohlc["high"].shift(-1),
+            ),
+            np.nan,
         )
 
         mitigated_index = np.zeros(len(ohlc), dtype=np.int32)
-        for i in np.where(fvg != 0)[0]:
+        for i in np.where(~np.isnan(fvg))[0]:
             mask = np.zeros(len(ohlc), dtype=np.bool_)
             if fvg[i] == 1:
                 mask = ohlc["low"][i + 2 :] <= top[i]
@@ -99,135 +110,122 @@ class smc:
                 j = np.argmax(mask) + i + 2
                 mitigated_index[i] = j
 
-        # create a series for each of the keys in the dictionary
-        fvg = pd.Series(fvg, name="FVG")
-        top = pd.Series(top, name="Top")
-        bottom = pd.Series(bottom, name="Bottom")
-        mitigated_index = pd.Series(mitigated_index, name="MitigatedIndex")
+        mitigated_index = np.where(np.isnan(fvg), np.nan, mitigated_index)
 
-        return pd.concat([fvg, top, bottom, mitigated_index], axis=1)
+        return pd.concat(
+            [
+                pd.Series(fvg, name="FVG"),
+                pd.Series(top, name="Top"),
+                pd.Series(bottom, name="Bottom"),
+                pd.Series(mitigated_index, name="MitigatedIndex"),
+            ],
+            axis=1,
+        )
 
     @classmethod
-    def highs_lows(cls, ohlc: DataFrame) -> Series:
-        pip_range = TA.ATR(ohlc, 14) / ohlc["close"].iloc[-1] * cls.atr_multiplier
-        pip_range = pip_range.iloc[-1]
+    def swing_highs_lows(
+        cls, ohlc: DataFrame, swing_length: int = 50
+    ) -> Series:
+        """
+        Swing Highs and Lows
+        A swing high is when the current high is the highest high out of the swing_length amount of candles before and after.
+        A swing low is when the current low is the lowest low out of the swing_length amount of candles before and after.
 
-        highs_lows = peak_valley_pivots(ohlc["close"], abs(pip_range), -abs(pip_range))
+        parameters:
+        swing_length: int - the amount of candles to look back and forward to determine the swing high or low
 
-        still_adjusting = True
-        while still_adjusting:
-            still_adjusting = False
-            for i in range(1, len(highs_lows) - 1):
-                if highs_lows[i] == 1:
-                    previous_high = ohlc["high"][i - 1]
-                    current_high = ohlc["high"][i]
-                    next_high = ohlc["high"][i + 1]
-                    if (previous_high > current_high and highs_lows[i - 1] == 0) or (
-                        next_high > current_high and highs_lows[i + 1] == 0
-                    ):
-                        highs_lows[i] = 0
-                        still_adjusting = True
-                        if previous_high > next_high and highs_lows[i - 1] == 0:
-                            highs_lows[i - 1] = 1
-                        else:
-                            highs_lows[i + 1] = 1
-                if highs_lows[i] == -1:
-                    previous_low = ohlc["low"][i - 1]
-                    current_low = ohlc["low"][i]
-                    next_low = ohlc["low"][i + 1]
-                    if (previous_low < current_low and highs_lows[i - 1] == 0) or (
-                        next_low < current_low and highs_lows[i + 1] == 0
-                    ):
-                        highs_lows[i] = 0
-                        still_adjusting = True
-                        if previous_low < next_low and highs_lows[i - 1] == 0:
-                            highs_lows[i - 1] = -1
-                        else:
-                            highs_lows[i + 1] = -1
+        returns:
+        HighLow = 1 if swing high, -1 if swing low
+        Level = the level of the swing high or low
+        """
 
-        levels = np.where(
-            highs_lows != 0,
-            np.where(highs_lows == 1, ohlc["high"], ohlc["low"]),
+        swing_length *= 2
+        # set the highs to 1 if the current high is the highest high in the last 5 candles and next 5 candles
+        swing_highs_lows = np.where(
+            ohlc["high"]
+            == ohlc["high"]
+            .shift(-(swing_length // 2))
+            .rolling(swing_length)
+            .max(),
+            1,
+            np.where(
+                ohlc["low"]
+                == ohlc["low"]
+                .shift(-(swing_length // 2))
+                .rolling(swing_length)
+                .min(),
+                -1,
+                np.nan,
+            ),
+        )
+
+        continue_ = True
+        while continue_:
+            positions = np.where(~np.isnan(swing_highs_lows))[0]
+            continue_ = False
+            for i in range(len(positions) - 1):
+                current, next = (
+                    swing_highs_lows[positions[i]],
+                    swing_highs_lows[positions[i + 1]],
+                )
+                high, low = (
+                    ohlc["high"].iloc[positions[i]],
+                    ohlc["low"].iloc[positions[i]],
+                )
+                next_high, next_low = (
+                    ohlc["high"].iloc[positions[i + 1]],
+                    ohlc["low"].iloc[positions[i + 1]],
+                )
+                if current == -1 and next == -1:
+                    remove_index = positions[i] if low > next_low else positions[i + 1]
+                    swing_highs_lows[remove_index] = np.nan
+                    continue_ = True
+                elif current == 1 and next == 1:
+                    remove_index = (
+                        positions[i] if high < next_high else positions[i + 1]
+                    )
+                    swing_highs_lows[remove_index] = np.nan
+                    continue_ = True
+
+        positions = np.where(~np.isnan(swing_highs_lows))[0]
+        if swing_highs_lows[positions[0]] == 1:
+            swing_highs_lows[0] = -1
+        if swing_highs_lows[positions[-1]] == -1:
+            swing_highs_lows[-1] = 1
+
+        level = np.where(
+            ~np.isnan(swing_highs_lows),
+            np.where(swing_highs_lows == 1, ohlc["high"], ohlc["low"]),
             np.nan,
         )
 
-        highs_lows = pd.Series(highs_lows, name="HighsLows")
-        levels = pd.Series(levels, name="Levels")
-
-        return pd.concat([highs_lows, levels], axis=1)
-
-    @classmethod
-    def swing_tops_bottoms(
-        cls, ohlc: DataFrame, swing_length: int = swing_length
-    ) -> Series:
-
-        swing_tops_bottoms = np.zeros(len(ohlc), dtype=np.int32)
-        swing_type = 0
-        prev_swing_type = 0
-
-        # Calculate the highest high and lowest low for the specified length
-        upper = ohlc["high"].rolling(window=swing_length).max()
-        lower = ohlc["low"].rolling(window=swing_length).min()
-
-        # Concatenate upper and lower to df
-        ohlc["upper"] = upper
-        ohlc["lower"] = lower
-
-        # Iterate over each index in the dataframe
-        for i in range(len(ohlc)):
-            try:
-                # Determine the swing type
-                if ohlc["high"].iloc[i] > upper.iloc[i + swing_length]:
-                    swing_type = 0
-                elif ohlc["low"].iloc[i] < lower.iloc[i + swing_length]:
-                    swing_type = 1
-
-                # Check if it's a new top or bottom
-                if swing_type == 0 and prev_swing_type != 0:
-                    swing_tops_bottoms[i] = 1
-                elif swing_type == 1 and prev_swing_type != 1:
-                    swing_tops_bottoms[i] = -1
-
-                # Update the previous swing type
-                prev_swing_type = swing_type
-            except IndexError:
-                pass
-
-        levels = np.where(
-            swing_tops_bottoms != 0,
-            np.where(swing_tops_bottoms == 1, ohlc["high"], ohlc["low"]),
-            np.nan,
+        return pd.concat(
+            [
+                pd.Series(swing_highs_lows, name="HighLow"),
+                pd.Series(level, name="Level"),
+            ],
+            axis=1,
         )
 
-        swing_tops_bottoms = pd.Series(swing_tops_bottoms, name="SwingTopsBottoms")
-        levels = pd.Series(levels, name="Levels")
-
-        return pd.concat([swing_tops_bottoms, levels], axis=1)
-
     @classmethod
-    def bos_choch(
-        cls, ohlc: DataFrame, close_break=True, filter_liquidity=False
-    ) -> Series:
+    def bos_choch(cls, ohlc: DataFrame, swing_highs_lows: DataFrame, close_break:bool = True) -> Series:
         """
-        BOS - Breakout Signal
-        CHoCH - Change of Character signal
-        This is when the current candle is the first candle to break out of a range.
+        BOS - Break of Structure
+        CHoCH - Change of Character
+        these are both indications of market structure changing
+
+        parameters:
+        swing_highs_lows: DataFrame - provide the dataframe from the swing_highs_lows function
+        close_break: bool - if True then the break of structure will be mitigated based on the close of the candle otherwise it will be the high/low.
+
+        returns:
+        BOS = 1 if bullish break of structure, -1 if bearish break of structure
+        CHOCH = 1 if bullish change of character, -1 if bearish change of character
+        Level = the level of the break of structure or change of character
+        BrokenIndex = the index of the candle that broke the level
         """
 
-        # get the highs and lows
-        highs_lows = cls.highs_lows(ohlc)
-        levels = highs_lows["Levels"]
-        highs_lows = highs_lows["HighsLows"]
-
-        # filter out the highs and lows used if it is aligned with liquidity
-        if filter_liquidity:
-            liquidity = cls.liquidity(ohlc)
-            liquidity = liquidity["Liquidity"]
-            for i in range(len(highs_lows)):
-                if liquidity[i] != 0 and highs_lows[i] != 0:
-                    highs_lows[i] = 0
-
-        levels_order = []
+        level_order = []
         highs_lows_order = []
 
         bos = np.zeros(len(ohlc), dtype=np.int32)
@@ -236,27 +234,27 @@ class smc:
 
         last_positions = []
 
-        for i in range(len(highs_lows)):
-            if highs_lows[i] != 0:
-                levels_order.append(levels[i])
-                highs_lows_order.append(highs_lows[i])
-                if len(levels_order) >= 4:
+        for i in range(len(swing_highs_lows["HighLow"])):
+            if not np.isnan(swing_highs_lows["HighLow"][i]):
+                level_order.append(swing_highs_lows["Level"][i])
+                highs_lows_order.append(swing_highs_lows["HighLow"][i])
+                if len(level_order) >= 4:
                     # bullish bos
                     bos[last_positions[-2]] = (
                         1
                         if (
                             np.all(highs_lows_order[-4:] == [-1, 1, -1, 1])
                             and np.all(
-                                levels_order[-4]
-                                < levels_order[-2]
-                                < levels_order[-3]
-                                < levels_order[-1]
+                                level_order[-4]
+                                < level_order[-2]
+                                < level_order[-3]
+                                < level_order[-1]
                             )
                         )
                         else 0
                     )
                     level[last_positions[-2]] = (
-                        levels_order[-3] if bos[last_positions[-2]] != 0 else 0
+                        level_order[-3] if bos[last_positions[-2]] != 0 else 0
                     )
 
                     # bearish bos
@@ -265,16 +263,16 @@ class smc:
                         if (
                             np.all(highs_lows_order[-4:] == [1, -1, 1, -1])
                             and np.all(
-                                levels_order[-4]
-                                > levels_order[-2]
-                                > levels_order[-3]
-                                > levels_order[-1]
+                                level_order[-4]
+                                > level_order[-2]
+                                > level_order[-3]
+                                > level_order[-1]
                             )
                         )
                         else bos[last_positions[-2]]
                     )
                     level[last_positions[-2]] = (
-                        levels_order[-3] if bos[last_positions[-2]] != 0 else 0
+                        level_order[-3] if bos[last_positions[-2]] != 0 else 0
                     )
 
                     # bullish choch
@@ -283,16 +281,16 @@ class smc:
                         if (
                             np.all(highs_lows_order[-4:] == [-1, 1, -1, 1])
                             and np.all(
-                                levels_order[-1]
-                                > levels_order[-3]
-                                > levels_order[-4]
-                                > levels_order[-2]
+                                level_order[-1]
+                                > level_order[-3]
+                                > level_order[-4]
+                                > level_order[-2]
                             )
                         )
                         else 0
                     )
                     level[last_positions[-2]] = (
-                        levels_order[-3]
+                        level_order[-3]
                         if choch[last_positions[-2]] != 0
                         else level[last_positions[-2]]
                     )
@@ -303,16 +301,16 @@ class smc:
                         if (
                             np.all(highs_lows_order[-4:] == [1, -1, 1, -1])
                             and np.all(
-                                levels_order[-1]
-                                < levels_order[-3]
-                                < levels_order[-4]
-                                < levels_order[-2]
+                                level_order[-1]
+                                < level_order[-3]
+                                < level_order[-4]
+                                < level_order[-2]
                             )
                         )
                         else choch[last_positions[-2]]
                     )
                     level[last_positions[-2]] = (
-                        levels_order[-3]
+                        level_order[-3]
                         if choch[last_positions[-2]] != 0
                         else level[last_positions[-2]]
                     )
@@ -340,18 +338,11 @@ class smc:
             choch[i] = 0
             level[i] = 0
 
-        # there can only be one high or low between the bos/choch and the broken index
-        for i in np.where(np.logical_or(bos != 0, choch != 0))[0]:
-            # count the number of highs or lows between the bos/choch and the broken index
-            count = 0
-            for j in range(i, broken[i]):
-                if highs_lows[j] != 0:
-                    count += 1
-            # if there is more than 1 high or low then remove the bos/choch
-            if count > 2:
-                bos[i] = 0
-                choch[i] = 0
-                level[i] = 0
+        # replace all the 0s with np.nan
+        bos = np.where(bos != 0, bos, np.nan)
+        choch = np.where(choch != 0, choch, np.nan)
+        level = np.where(level != 0, level, np.nan)
+        broken = np.where(broken != 0, broken, np.nan)
 
         bos = pd.Series(bos, name="BOS")
         choch = pd.Series(choch, name="CHOCH")
@@ -361,143 +352,24 @@ class smc:
         return pd.concat([bos, choch, level, broken], axis=1)
 
     @classmethod
-    def ob(cls, ohlc: DataFrame) -> Series:
-        """
-        OB - Order Block
-        This is the last candle before a FVG
-        """
-
-        # get the FVG
-        fvg = cls.fvg(ohlc)
-
-        ob = np.where(
-            (fvg["FVG"].shift(-1) != 0) & (fvg["FVG"] == 0), fvg["FVG"].shift(-1), 0
-        )
-        # top is equal to the current candles high unless the ob is -1 and the next candles high is higher than the current candles high then top is equal to the next candles high
-        top = np.where(
-            (ob == -1) & (ohlc["high"].shift(-1) > ohlc["high"]),
-            ohlc["high"].shift(-1),
-            ohlc["high"],
-        )
-        # bottom is equal to the current candles low unless the ob is 1 and the next candles low is lower than the current candles low then bottom is equal to the next candles low
-        bottom = np.where(
-            (ob == 1) & (ohlc["low"].shift(-1) < ohlc["low"]),
-            ohlc["low"].shift(-1),
-            ohlc["low"],
-        )
-
-        # set mitigated to np.nan
-        mitigated_index = np.zeros(len(ohlc), dtype=np.int32)
-        for i in np.where(ob != 0)[0]:
-            mask = np.zeros(len(ohlc), dtype=np.bool_)
-            if ob[i] == 1:
-                mask = ohlc["low"][i + 2 :] <= top[i]
-            elif ob[i] == -1:
-                mask = ohlc["high"][i + 2 :] >= bottom[i]
-            if np.any(mask):
-                j = np.argmax(mask) + i + 2
-                mitigated_index[i] = j
-
-        # create a series for each of the keys in the dictionary
-        ob = pd.Series(ob, name="OB")
-        top = pd.Series(top, name="Top")
-        bottom = pd.Series(bottom, name="Bottom")
-        mitigated_index = pd.Series(mitigated_index, name="MitigatedIndex")
-
-        return pd.concat([ob, top, bottom, mitigated_index], axis=1)
-
-    @classmethod
-    def liquidity(cls, ohlc: DataFrame) -> Series:
-        """
-        Liquidity
-        Liquidity is when there are multiply highs within a small range of each other.
-        or multiply lows within a small range of each other.
-        """
-
-        # subtract the highest high from the lowest low
-        pip_range = (max(ohlc["high"]) - min(ohlc["low"])) * cls.range_percent
-
-        # get the highs and lows
-        highs_lows = cls.highs_lows(ohlc)
-        levels = highs_lows["Levels"]
-        highs_lows = highs_lows["HighsLows"]
-
-        # go through all of the high levels and if there are more than 1 within the pip range, then it is liquidity
-        liquidity = np.zeros(len(ohlc), dtype=np.int32)
-        liquidity_level = np.zeros(len(ohlc), dtype=np.float32)
-        liquidity_end = np.zeros(len(ohlc), dtype=np.int32)
-        liquidity_swept = np.zeros(len(ohlc), dtype=np.int32)
-
-        for i in range(len(ohlc)):
-            if highs_lows[i] == 1:
-                high_level = levels[i]
-                range_low = high_level - pip_range
-                range_high = high_level + pip_range
-                temp_liquidity_levels = [high_level]
-                start = i
-                end = i
-                swept = 0
-                for c in range(i + 1, len(ohlc)):
-                    if highs_lows[c] == 1 and range_low <= levels[c] <= range_high:
-                        end = c
-                        temp_liquidity_levels.append(levels[c])
-                        highs_lows.loc[c] = 0
-                    if ohlc["high"][c] >= range_high:
-                        swept = c
-                        break
-                if len(temp_liquidity_levels) > 1:
-                    average_high = sum(temp_liquidity_levels) / len(
-                        temp_liquidity_levels
-                    )
-                    liquidity[i] = 1
-                    liquidity_level[i] = average_high
-                    liquidity_end[i] = end
-                    liquidity_swept[i] = swept
-
-        # now do the same for the lows
-        for i in range(len(ohlc)):
-            if highs_lows[i] == -1:
-                low_level = levels[i]
-                range_low = low_level - pip_range
-                range_high = low_level + pip_range
-                temp_liquidity_levels = [low_level]
-                start = i
-                end = i
-                swept = 0
-                for c in range(i + 1, len(ohlc)):
-                    if highs_lows[c] == -1 and range_low <= levels[c] <= range_high:
-                        end = c
-                        temp_liquidity_levels.append(levels[c])
-                        highs_lows.loc[c] = 0
-                    if ohlc["low"][c] <= range_low:
-                        swept = c
-                        break
-                if len(temp_liquidity_levels) > 1:
-                    average_low = sum(temp_liquidity_levels) / len(
-                        temp_liquidity_levels
-                    )
-                    liquidity[i] = -1
-                    liquidity_level[i] = average_low
-                    liquidity_end[i] = end
-                    liquidity_swept[i] = swept
-
-        liquidity = pd.Series(liquidity, name="Liquidity")
-        level = pd.Series(liquidity_level, name="Level")
-        liquidity_end = pd.Series(liquidity_end, name="End")
-        liquidity_swept = pd.Series(liquidity_swept, name="Swept")
-
-        return pd.concat([liquidity, level, liquidity_end, liquidity_swept], axis=1)
-
-    @classmethod
-    def vob(
+    def ob(
         cls,
-        ohlc: pd.DataFrame,
-        swing_length: int = swing_length,
-        close_mitigation: bool = close_mitigation,
+        ohlc: DataFrame,
+        swing_highs_lows: DataFrame,
+        close_mitigation:bool = False,
     ) -> DataFrame:
         """
-        VOB - Volumized Order Blocks
+        OB - Order Blocks
         This method detects order blocks when there is a high amount of market orders exist on a price range.
+
+        parameters:
+        swing_highs_lows: DataFrame - provide the dataframe from the swing_highs_lows function
+        close_mitigation: bool - if True then the order block will be mitigated based on the close of the candle otherwise it will be the high/low.
+
+        returns:
+        OB = 1 if bullish order block, -1 if bearish order block
+        Top = top of the order block
+        Bottom = bottom of the order block
         OBVolume = volume + 2 last volumes amounts
         Percentage = strength of order block (min(highVolume, lowVolume)/max(highVolume,lowVolume))
         """
@@ -513,9 +385,6 @@ class smc:
         mitigated_index = np.zeros(len(ohlc), dtype=np.int32)
         breaker = np.full(len(ohlc), False, dtype=bool)
 
-        ob_swing = cls.swing_tops_bottoms(ohlc, swing_length)
-        ob_swing = ob_swing["SwingTopsBottoms"]
-
         for i in range(len(ohlc)):
             close_index = i
             close_price = ohlc["close"].iloc[close_index]
@@ -525,8 +394,15 @@ class smc:
                 for j in range(len(ob) - 1, -1, -1):
                     if ob[j] == 1:
                         currentOB = j
-                        if not breaker[currentOB]:
-                            if (
+                        if breaker[currentOB]:
+                            if ohlc.high.iloc[close_index] > top[currentOB]:
+                                ob[j] = top[j] = bottom[j] = obVolume[j] = lowVolume[
+                                    j
+                                ] = highVolume[j] = mitigated_index[j] = percentage[
+                                    j
+                                ] = 0.0
+
+                        elif (
                                 not close_mitigation
                                 and ohlc["low"].iloc[close_index] < bottom[currentOB]
                             ) or (
@@ -537,21 +413,13 @@ class smc:
                                 )
                                 < bottom[currentOB]
                             ):
-                                breaker[currentOB] = True
-                                mitigated_index[currentOB] = close_index - 1
-                        else:
-                            if ohlc["high"].iloc[close_index] > top[currentOB]:
-                                ob[j] = top[j] = bottom[j] = obVolume[j] = lowVolume[
-                                    j
-                                ] = highVolume[j] = mitigated_index[j] = percentage[
-                                    j
-                                ] = 0.0
-
-            last_top_indices = np.where(
-                (ob_swing == 1) & (np.arange(len(ob_swing)) < close_index)
-            )[0]
-            if len(last_top_indices) > 0:
-                last_top_index = last_top_indices[-1]
+                            breaker[currentOB] = True
+                            mitigated_index[currentOB] = close_index - 1
+            last_top_index = None
+            for j in range(len(swing_highs_lows["HighLow"])):
+                if swing_highs_lows["HighLow"][j] == 1 and j < close_index:
+                    last_top_index = j
+            if last_top_index is not None:
                 swing_top_price = ohlc["high"].iloc[last_top_index]
                 if close_price > swing_top_price and not crossed[last_top_index]:
                     crossed[last_top_index] = True
@@ -598,8 +466,15 @@ class smc:
                 for j in range(len(ob) - 1, -1, -1):
                     if ob[j] == -1:
                         currentOB = j
-                        if not breaker[currentOB]:
-                            if (
+                        if breaker[currentOB]:
+                            if ohlc.low.iloc[close_index] < bottom[currentOB]:
+                                ob[j] = top[j] = bottom[j] = obVolume[j] = lowVolume[
+                                    j
+                                ] = highVolume[j] = mitigated_index[j] = percentage[
+                                    j
+                                ] = 0.0
+
+                        elif (
                                 not close_mitigation
                                 and ohlc["high"].iloc[close_index] > top[currentOB]
                             ) or (
@@ -610,21 +485,13 @@ class smc:
                                 )
                                 > top[currentOB]
                             ):
-                                breaker[currentOB] = True
-                                mitigated_index[currentOB] = close_index
-                        else:
-                            if ohlc["low"].iloc[close_index] < bottom[currentOB]:
-                                ob[j] = top[j] = bottom[j] = obVolume[j] = lowVolume[
-                                    j
-                                ] = highVolume[j] = mitigated_index[j] = percentage[
-                                    j
-                                ] = 0.0
-
-            last_btm_indices = np.where(
-                (ob_swing == -1) & (np.arange(len(ob_swing)) < close_index)
-            )[0]
-            if len(last_btm_indices) > 0:
-                last_btm_index = last_btm_indices[-1]
+                            breaker[currentOB] = True
+                            mitigated_index[currentOB] = close_index
+            last_btm_index = None
+            for j in range(len(swing_highs_lows["HighLow"])):
+                if swing_highs_lows["HighLow"][j] == -1 and j < close_index:
+                    last_btm_index = j
+            if last_btm_index is not None:
                 swing_btm_price = ohlc["low"].iloc[last_btm_index]
                 if close_price < swing_btm_price and not crossed[last_btm_index]:
                     crossed[last_btm_index] = True
@@ -662,6 +529,13 @@ class smc:
                         / np.max([highVolume[obIndex], lowVolume[obIndex]], axis=0)
                     ) * 100.0
 
+        ob = np.where(ob != 0, ob, np.nan)
+        top = np.where(~np.isnan(ob), top, np.nan)
+        bottom = np.where(~np.isnan(ob), bottom, np.nan)
+        obVolume = np.where(~np.isnan(ob), obVolume, np.nan)
+        mitigated_index = np.where(~np.isnan(ob), mitigated_index, np.nan)
+        percentage = np.where(~np.isnan(ob), percentage, np.nan)
+
         ob_series = pd.Series(ob, name="OB")
         top_series = pd.Series(top, name="Top")
         bottom_series = pd.Series(bottom, name="Bottom")
@@ -680,3 +554,91 @@ class smc:
             ],
             axis=1,
         )
+
+    @classmethod
+    def liquidity(cls, ohlc: DataFrame, swing_highs_lows: DataFrame, range_percent:float = 0.01) -> Series:
+        """
+        Liquidity
+        Liquidity is when there are multiply highs within a small range of each other.
+        or multiply lows within a small range of each other.
+
+        parameters:
+        swing_highs_lows: DataFrame - provide the dataframe from the swing_highs_lows function
+        range_percent: float - the percentage of the range to determine liquidity
+
+        returns:
+        Liquidity = 1 if bullish liquidity, -1 if bearish liquidity
+        Level = the level of the liquidity
+        End = the index of the last liquidity level
+        Swept = the index of the candle that swept the liquidity
+        """
+
+        # subtract the highest high from the lowest low
+        pip_range = (max(ohlc["high"]) - min(ohlc["low"])) * range_percent
+
+        # go through all of the high level and if there are more than 1 within the pip range, then it is liquidity
+        liquidity = np.zeros(len(ohlc), dtype=np.int32)
+        liquidity_level = np.zeros(len(ohlc), dtype=np.float32)
+        liquidity_end = np.zeros(len(ohlc), dtype=np.int32)
+        liquidity_swept = np.zeros(len(ohlc), dtype=np.int32)
+
+        for i in range(len(ohlc)):
+            if swing_highs_lows["HighLow"][i] == 1:
+                high_level = swing_highs_lows["Level"][i]
+                range_low = high_level - pip_range
+                range_high = high_level + pip_range
+                temp_liquidity_level = [high_level]
+                start = i
+                end = i
+                swept = 0
+                for c in range(i + 1, len(ohlc)):
+                    if swing_highs_lows["HighLow"][c] == 1 and range_low <= swing_highs_lows["Level"][c] <= range_high:
+                        end = c
+                        temp_liquidity_level.append(swing_highs_lows["Level"][c])
+                        swing_highs_lows.loc[c, "HighLow"] = 0
+                    if ohlc["high"].iloc[c] >= range_high:
+                        swept = c
+                        break
+                if len(temp_liquidity_level) > 1:
+                    average_high = sum(temp_liquidity_level) / len(temp_liquidity_level)
+                    liquidity[i] = 1
+                    liquidity_level[i] = average_high
+                    liquidity_end[i] = end
+                    liquidity_swept[i] = swept
+
+        # now do the same for the lows
+        for i in range(len(ohlc)):
+            if swing_highs_lows["HighLow"][i] == -1:
+                low_level = swing_highs_lows["Level"][i]
+                range_low = low_level - pip_range
+                range_high = low_level + pip_range
+                temp_liquidity_level = [low_level]
+                start = i
+                end = i
+                swept = 0
+                for c in range(i + 1, len(ohlc)):
+                    if swing_highs_lows["HighLow"][c] == -1 and range_low <= swing_highs_lows["Level"][c] <= range_high:
+                        end = c
+                        temp_liquidity_level.append(swing_highs_lows["Level"][c])
+                        swing_highs_lows.loc[c, "HighLow"] = 0
+                    if ohlc["low"].iloc[c] <= range_low:
+                        swept = c
+                        break
+                if len(temp_liquidity_level) > 1:
+                    average_low = sum(temp_liquidity_level) / len(temp_liquidity_level)
+                    liquidity[i] = -1
+                    liquidity_level[i] = average_low
+                    liquidity_end[i] = end
+                    liquidity_swept[i] = swept
+
+        liquidity = np.where(liquidity != 0, liquidity, np.nan)
+        liquidity_level = np.where(~np.isnan(liquidity), liquidity_level, np.nan)
+        liquidity_end = np.where(~np.isnan(liquidity), liquidity_end, np.nan)
+        liquidity_swept = np.where(~np.isnan(liquidity), liquidity_swept, np.nan)
+
+        liquidity = pd.Series(liquidity, name="Liquidity")
+        level = pd.Series(liquidity_level, name="Level")
+        liquidity_end = pd.Series(liquidity_end, name="End")
+        liquidity_swept = pd.Series(liquidity_swept, name="Swept")
+
+        return pd.concat([liquidity, level, liquidity_end, liquidity_swept], axis=1)

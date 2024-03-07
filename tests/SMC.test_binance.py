@@ -4,6 +4,8 @@ import sys
 import os
 from binance.client import Client
 from datetime import datetime
+import numpy as np
+import time
 
 sys.path.append(os.path.abspath("../"))
 from smartmoneyconcepts.smc import smc
@@ -21,12 +23,12 @@ def import_data(symbol, start_str, timeframe):
     df = df.iloc[:, :6]
     df.columns = ["timestamp", "open", "high", "low", "close", "volume"]
     df = df.set_index("timestamp")
-    df.index = pd.to_datetime(df.index, unit="ms")
+    df.index = pd.to_datetime(df.index, unit="ms").strftime("%Y-%m-%d %H:%M:%S")
     return df
 
 
 df = import_data("BTCUSDT", "2021-01-01", "1d")
-df = df.iloc[-500:]
+df = df.iloc[-1000:]
 
 fig = go.Figure(
     data=[
@@ -41,12 +43,10 @@ fig = go.Figure(
 )
 
 
-def add_FVG(fig):
-    fvg_data = smc.fvg(df)
-    # plot a rectangle for each fvg
+def add_FVG(fig, fvg_data):
     for i in range(len(fvg_data["FVG"])):
-        if fvg_data["FVG"][i] != 0:
-            x1 = (
+        if not np.isnan(fvg_data["FVG"][i]):
+            x1 = int(
                 fvg_data["MitigatedIndex"][i]
                 if fvg_data["MitigatedIndex"][i] != 0
                 else len(df) - 1
@@ -67,28 +67,25 @@ def add_FVG(fig):
     return fig
 
 
-def add_highs_lows(fig):
-    highs_lows_data = smc.highs_lows(df)
-
-    # remove from highs_lows_data
+def add_swing_highs_lows(fig, swing_highs_lows_data):
     indexs = []
-    levels = []
-    for i in range(len(highs_lows_data)):
-        if highs_lows_data["HighsLows"][i] != 0:
+    level = []
+    for i in range(len(swing_highs_lows_data)):
+        if not np.isnan(swing_highs_lows_data["HighLow"][i]):
             indexs.append(i)
-            levels.append(highs_lows_data["Levels"][i])
+            level.append(swing_highs_lows_data["Level"][i])
 
     # plot these lines on a graph
     for i in range(len(indexs) - 1):
         fig.add_trace(
             go.Scatter(
                 x=[df.index[indexs[i]], df.index[indexs[i + 1]]],
-                y=[levels[i], levels[i + 1]],
+                y=[level[i], level[i + 1]],
                 mode="lines",
                 line=dict(
                     color=(
                         "green"
-                        if highs_lows_data["HighsLows"][indexs[i]] == -1
+                        if swing_highs_lows_data["HighLow"][indexs[i]] == -1
                         else "red"
                     ),
                 ),
@@ -98,44 +95,12 @@ def add_highs_lows(fig):
     return fig
 
 
-def add_swing_tops_bottoms(fig):
-    swing_tops_bottoms_data = smc.swing_tops_bottoms(df)
-
-    indexs = []
-    levels = []
-    for i in range(len(swing_tops_bottoms_data)):
-        if swing_tops_bottoms_data["SwingTopsBottoms"][i] != 0:
-            indexs.append(i)
-            levels.append(swing_tops_bottoms_data["Levels"][i])
-
-    # plot these lines on a graph
-    for i in range(len(indexs) - 1):
-        fig.add_trace(
-            go.Scatter(
-                x=[df.index[indexs[i]], df.index[indexs[i + 1]]],
-                y=[levels[i], levels[i + 1]],
-                mode="lines",
-                line=dict(
-                    color=(
-                        "green"
-                        if swing_tops_bottoms_data["SwingTopsBottoms"][indexs[i]] == -1
-                        else "red"
-                    ),
-                ),
-            )
-        )
-
-    return fig
-
-
-def add_bos_choch(fig):
-    bos_choch_data = smc.bos_choch(df)
-
+def add_bos_choch(fig, bos_choch_data):
     for i in range(len(bos_choch_data["BOS"])):
-        if bos_choch_data["BOS"][i] != 0:
+        if not np.isnan(bos_choch_data["BOS"][i]):
             fig.add_trace(
                 go.Scatter(
-                    x=[df.index[i], df.index[bos_choch_data["BrokenIndex"][i]]],
+                    x=[df.index[i], df.index[int(bos_choch_data["BrokenIndex"][i])]],
                     y=[bos_choch_data["Level"][i], bos_choch_data["Level"][i]],
                     mode="lines",
                     line=dict(
@@ -143,10 +108,10 @@ def add_bos_choch(fig):
                     ),
                 )
             )
-        if bos_choch_data["CHOCH"][i] != 0:
+        if not np.isnan(bos_choch_data["CHOCH"][i]):
             fig.add_trace(
                 go.Scatter(
-                    x=[df.index[bos_choch_data["BrokenIndex"][i]], df.index[i]],
+                    x=[df.index[int(bos_choch_data["BrokenIndex"][i])], df.index[i]],
                     y=[bos_choch_data["Level"][i], bos_choch_data["Level"][i]],
                     mode="lines",
                     line=dict(
@@ -158,36 +123,7 @@ def add_bos_choch(fig):
     return fig
 
 
-def add_OB(fig):
-    ob_data = smc.ob(df)
-
-    # plot the same way as FVG
-    for i in range(len(ob_data["OB"])):
-        if ob_data["OB"][i] == 1:
-            x1 = (
-                ob_data["MitigatedIndex"][i]
-                if ob_data["MitigatedIndex"][i] != 0
-                else len(df) - 1
-            )
-            fig.add_shape(
-                type="rect",
-                x0=df.index[i],
-                y0=ob_data["Top"][i],
-                x1=df.index[x1],
-                y1=ob_data["Bottom"][i],
-                line=dict(
-                    width=0,
-                ),
-                fillcolor="purple",
-                opacity=0.5,
-            )
-    return fig
-
-
-def add_VOB(fig):
-
-    ob_data = smc.vob(df)
-
+def add_OB(fig, ob_data):
     def format_volume(volume):
         if volume >= 1e12:
             return f"{volume / 1e12:.3f}T"
@@ -202,7 +138,7 @@ def add_VOB(fig):
 
     for i in range(len(ob_data["OB"])):
         if ob_data["OB"][i] == 1:
-            x1 = (
+            x1 = int(
                 ob_data["MitigatedIndex"][i]
                 if ob_data["MitigatedIndex"][i] != 0
                 else len(df) - 1
@@ -244,7 +180,7 @@ def add_VOB(fig):
 
     for i in range(len(ob_data["OB"])):
         if ob_data["OB"][i] == -1:
-            x1 = (
+            x1 = int(
                 ob_data["MitigatedIndex"][i]
                 if ob_data["MitigatedIndex"][i] != 0
                 else len(df) - 1
@@ -286,15 +222,13 @@ def add_VOB(fig):
     return fig
 
 
-def add_liquidity(fig):
-    liquidity_data = smc.liquidity(df)
-
+def add_liquidity(fig, liquidity_data):
     # draw a line horizontally for each liquidity level
     for i in range(len(liquidity_data["Liquidity"])):
-        if liquidity_data["Liquidity"][i] != 0:
+        if not np.isnan(liquidity_data["Liquidity"][i]):
             fig.add_trace(
                 go.Scatter(
-                    x=[df.index[i], df.index[liquidity_data["End"][i]]],
+                    x=[df.index[i], df.index[int(liquidity_data["End"][i])]],
                     y=[liquidity_data["Level"][i], liquidity_data["Level"][i]],
                     mode="lines",
                     line=dict(
@@ -302,20 +236,20 @@ def add_liquidity(fig):
                     ),
                 )
             )
-        if liquidity_data["Swept"][i] != 0:
+        if liquidity_data["Swept"][i] != 0 and not np.isnan(liquidity_data["Swept"][i]):
             # draw a red line between the end and the swept point
             fig.add_trace(
                 go.Scatter(
                     x=[
-                        df.index[liquidity_data["End"][i]],
-                        df.index[liquidity_data["Swept"][i]],
+                        df.index[int(liquidity_data["End"][i])],
+                        df.index[int(liquidity_data["Swept"][i])],
                     ],
                     y=[
                         liquidity_data["Level"][i],
                         (
-                            df["high"][liquidity_data["Swept"][i]]
+                            df["high"].iloc[int(liquidity_data["Swept"][i])]
                             if liquidity_data["Liquidity"][i] == 1
-                            else df["low"][liquidity_data["Swept"][i]]
+                            else df["low"].iloc[int(liquidity_data["Swept"][i])]
                         ),
                     ],
                     mode="lines",
@@ -326,15 +260,23 @@ def add_liquidity(fig):
             )
     return fig
 
+fvg_data = smc.fvg(df)
+swing_highs_lows_data = smc.swing_highs_lows(df, swing_length=50)
+bos_choch_data = smc.bos_choch(df, swing_highs_lows_data)
+ob_data = smc.ob(df, swing_highs_lows_data)
+liquidity_data = smc.liquidity(df, swing_highs_lows_data)
+fig = add_FVG(fig, fvg_data)
+fig = add_swing_highs_lows(fig, swing_highs_lows_data)
+fig = add_bos_choch(fig, bos_choch_data)
+fig = add_OB(fig, ob_data)
+fig = add_liquidity(fig, liquidity_data)
 
-fig = add_FVG(fig)
-fig = add_highs_lows(fig)
-fig = add_swing_tops_bottoms(fig)
-fig = add_bos_choch(fig)
-fig = add_OB(fig)
-fig = add_VOB(fig)
-fig = add_liquidity(fig)
 fig.update_layout(xaxis_rangeslider_visible=False)
 fig.update_layout(showlegend=False)
 fig.update_layout(margin=dict(l=0, r=0, b=0, t=0))
+fig.update_xaxes(visible=False, showticklabels=False)
+fig.update_yaxes(visible=False, showticklabels=False)
+fig.update_layout(plot_bgcolor="rgba(0,0,0,0)")
+fig.update_layout(paper_bgcolor="rgba(94, 94, 134, 1)")
+fig.update_layout(font=dict(color="white"))
 fig.write_image("test_binance.png")
