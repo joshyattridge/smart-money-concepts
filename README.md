@@ -25,7 +25,7 @@ smc expects properly formated ohlc DataFrame, with column names in lowercase: ["
 ### Fair Value Gap (FVG)
 
 ```python
-    smc.fvg(ohlc)
+smc.fvg(ohlc)
 ```
 
 A fair value gap is when the previous high is lower than the next low if the current candle is bullish.
@@ -40,7 +40,7 @@ MitigatedIndex = the index of the candle that mitigated the fair value gap
 ### Swing Highs and Lows
 
 ```python
-    smc.swing_highs_lows(ohlc, swing_length = 50)
+smc.swing_highs_lows(ohlc, swing_length = 50)
 ```
 
 A swing high is when the current high is the highest high out of the swing_length amount of candles before and after.
@@ -56,7 +56,7 @@ Level = the level of the swing high or low
 ### Break of Structure (BOS) & Change of Character (CHoCH)
 
 ```python
-    smc.bos_choch(ohlc, swing_highs_lows, close_break = True)
+smc.bos_choch(ohlc, swing_highs_lows, close_break = True)
 ```
 
 These are both indications of market structure changing
@@ -74,7 +74,7 @@ BrokenIndex = the index of the candle that broke the level
 ### Order Blocks (OB)
 
 ```python
-    smc.ob(ohlc, swing_highs_lows, close_mitigation = False)
+smc.ob(ohlc, swing_highs_lows, close_mitigation = False)
 ```
 
 This method detects order blocks when there is a high amount of market orders exist on a price range.
@@ -93,7 +93,7 @@ Percentage = strength of order block (min(highVolume, lowVolume)/max(highVolume,
 ### Liquidity
 
 ```python
-    smc.liquidity(ohlc, swing_highs_lows, range_percent = 0.01)
+smc.liquidity(ohlc, swing_highs_lows, range_percent = 0.01)
 ```
 
 Liquidity is when there are multiply highs within a small range of each other.
