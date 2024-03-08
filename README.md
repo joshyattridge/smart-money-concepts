@@ -1,6 +1,6 @@
 # Smart Money Concepts (smc) BETA
 
-The Smart Money Concepts Python Indicator is a sophisticated financial tool developed for traders and investors to gain insights into market sentiment, trends, and potential reversals. This indicator is built using Python, a versatile programming language known for its data analysis and visualization capabilities.
+The Smart Money Concepts Python Indicator is a sophisticated financial tool developed for traders and investors to gain insights into market sentiment, trends, and potential reversals. This indicator is inspired by Inner Circle Trader (ICT) concepts like Order blocks, Liquidity, Fair Value Gap, Swing Highs and Lows, Break of Structure, Change of Character, and more. Please Take a look and contribute to the project.
 
 ![alt text](https://github.com/joshyattridge/smart-money-concepts/blob/21656dd807c4077f345b6cbf29b1bc37672628e9/tests/test_binance.png)
 
