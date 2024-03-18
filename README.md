@@ -2,7 +2,7 @@
 
 The Smart Money Concepts Python Indicator is a sophisticated financial tool developed for traders and investors to gain insights into market sentiment, trends, and potential reversals. This indicator is inspired by Inner Circle Trader (ICT) concepts like Order blocks, Liquidity, Fair Value Gap, Swing Highs and Lows, Break of Structure, Change of Character, and more. Please Take a look and contribute to the project.
 
-![alt text](https://github.com/joshyattridge/smart-money-concepts/blob/21656dd807c4077f345b6cbf29b1bc37672628e9/tests/test_binance.png)
+![alt text](https://github.com/joshyattridge/smart-money-concepts/blob/53dd0b0a5e598d04b0cd3d10af71a0c252ad850d/tests/test_binance.png)
 
 ## Installation
 
@@ -108,6 +108,21 @@ Liquidity = 1 if bullish liquidity, -1 if bearish liquidity<br>
 Level = the level of the liquidity<br>
 End = the index of the last liquidity level<br>
 Swept = the index of the candle that swept the liquidity<br>
+
+### Previous High And Low
+
+```python
+smc.previous_high_low(ohlc, time_frame = "1D")
+```
+
+This method returns the previous high and low of the given time frame.
+
+parameters:<br>
+time_frame: str - the time frame to get the previous high and low 15m, 1H, 4H, 1D, 1W, 1M<br>
+
+returns:<br>
+PreviousHigh = the previous high<br>
+PreviousLow = the previous low<br>
 
 ## Contributing
 
