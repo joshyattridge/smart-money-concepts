@@ -109,6 +109,21 @@ Level = the level of the liquidity<br>
 End = the index of the last liquidity level<br>
 Swept = the index of the candle that swept the liquidity<br>
 
+### Previous High And Low
+
+```python
+smc.previous_high_low(ohlc, time_frame = "1D")
+```
+
+This method returns the previous high and low of the given time frame.
+
+parameters:<br>
+time_frame: str - the time frame to get the previous high and low 15m, 1H, 4H, 1D, 1W, 1M<br>
+
+returns:<br>
+PreviousHigh = the previous high<br>
+PreviousLow = the previous low<br>
+
 ## Contributing
 
 This project is still in BETA so please feel free to contribute to the project. By creating your own indicators or improving the existing ones. If you are stuggling to find something to do then please check out the issues tab for requested changes.
