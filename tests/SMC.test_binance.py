@@ -260,16 +260,50 @@ def add_liquidity(fig, liquidity_data):
             )
     return fig
 
+def add_previous_high_low(fig, previous_high_low_data):
+    high = previous_high_low_data["PreviousHigh"]
+    low = previous_high_low_data["PreviousLow"]
+    # draw a line horizontally for each high where the highs are the same consecutively
+    for i in range(len(high)-1):
+        if high.iloc[i] == high.iloc[i+1]:
+            fig.add_trace(
+                go.Scatter(
+                    x=[df.index[i], df.index[i+1]],
+                    y=[high.iloc[i], high.iloc[i+1]],
+                    mode="lines",
+                    line=dict(
+                        color="lightblue",
+                    ),
+                )
+            )
+    # draw a line horizontally for each low where the lows are the same consecutively
+    for i in range(len(low)-1):
+        if low.iloc[i] == low.iloc[i+1]:
+            fig.add_trace(
+                go.Scatter(
+                    x=[df.index[i], df.index[i+1]],
+                    y=[low.iloc[i], low.iloc[i+1]],
+                    mode="lines",
+                    line=dict(
+                        color="lightblue",
+                    ),
+                )
+            )
+
+    return fig
+
 fvg_data = smc.fvg(df)
 swing_highs_lows_data = smc.swing_highs_lows(df, swing_length=50)
 bos_choch_data = smc.bos_choch(df, swing_highs_lows_data)
 ob_data = smc.ob(df, swing_highs_lows_data)
 liquidity_data = smc.liquidity(df, swing_highs_lows_data)
+previous_high_low_data = smc.previous_high_low(df, time_frame="1W")
 fig = add_FVG(fig, fvg_data)
 fig = add_swing_highs_lows(fig, swing_highs_lows_data)
 fig = add_bos_choch(fig, bos_choch_data)
 fig = add_OB(fig, ob_data)
 fig = add_liquidity(fig, liquidity_data)
+fig = add_previous_high_low(fig, previous_high_low_data)
 
 fig.update_layout(xaxis_rangeslider_visible=False)
 fig.update_layout(showlegend=False)

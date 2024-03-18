@@ -2,6 +2,7 @@ from functools import wraps
 import pandas as pd
 import numpy as np
 from pandas import DataFrame, Series
+from datetime import datetime
 
 
 def inputvalidator(input_="ohlc"):
@@ -642,3 +643,53 @@ class smc:
         liquidity_swept = pd.Series(liquidity_swept, name="Swept")
 
         return pd.concat([liquidity, level, liquidity_end, liquidity_swept], axis=1)
+    
+    @classmethod
+    def previous_high_low(cls, ohlc: DataFrame, time_frame: str = "1D") -> Series:
+        """
+        Previous High Low
+        This method returns the previous high and low of the given time frame.
+
+        parameters:
+        time_frame: str - the time frame to get the previous high and low 15m, 1H, 4H, 1D, 1W, 1M
+
+        returns:
+        PreviousHigh = the previous high
+        PreviousLow = the previous low
+        """
+
+        ohlc.index = pd.to_datetime(ohlc.index)
+
+        resampled_ohlc = ohlc.resample(time_frame).agg(
+            {
+                "open": "first",
+                "high": "max",
+                "low": "min",
+                "close": "last",
+                "volume": "sum",
+            }
+        )
+
+        # for every candle in ohlc add a new column with the previous high and low
+        # Fix: Import the datetime module
+        previous_high = np.zeros(len(ohlc), dtype=np.float32)
+        previous_low = np.zeros(len(ohlc), dtype=np.float32)
+
+        for i in range(len(ohlc)):
+            current_time = ohlc.index[i]
+            # get the 1st high where the current time is greater than the time from the resampled ohlc
+            previous_high_index = resampled_ohlc["high"].where(
+                resampled_ohlc.index < current_time
+            ).last_valid_index()
+            previous_high[i] = resampled_ohlc["high"][previous_high_index] if previous_high_index is not None else np.nan
+            # get the 1st low where the current time is greater than the time from the resampled ohlc
+            previous_low_index = resampled_ohlc["low"].where(
+                resampled_ohlc.index < current_time
+            ).last_valid_index()
+            previous_low[i] = resampled_ohlc["low"][previous_low_index] if previous_low_index is not None else np.nan
+
+        previous_high = pd.Series(previous_high, name="PreviousHigh")
+        previous_low = pd.Series(previous_low, name="PreviousLow")
+
+        return pd.concat([previous_high, previous_low], axis=1)
+
