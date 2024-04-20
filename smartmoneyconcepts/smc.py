@@ -189,10 +189,11 @@ class smc:
                     continue_ = True
 
         positions = np.where(~np.isnan(swing_highs_lows))[0]
-        if swing_highs_lows[positions[0]] == 1:
-            swing_highs_lows[0] = -1
-        if swing_highs_lows[positions[-1]] == -1:
-            swing_highs_lows[-1] = 1
+        if len(positions) > 0:
+            if swing_highs_lows[positions[0]] == 1:
+                swing_highs_lows[0] = -1
+            if swing_highs_lows[positions[-1]] == -1:
+                swing_highs_lows[-1] = 1
 
         level = np.where(
             ~np.isnan(swing_highs_lows),
