@@ -25,11 +25,14 @@ smc expects properly formated ohlc DataFrame, with column names in lowercase: ["
 ### Fair Value Gap (FVG)
 
 ```python
-smc.fvg(ohlc)
+smc.fvg(ohlc, join_consecutive=False)
 ```
 
 A fair value gap is when the previous high is lower than the next low if the current candle is bullish.
 Or when the previous low is higher than the next high if the current candle is bearish.
+
+parameters:<br>
+join_consecutive: bool - if there are multiple FVG in a row then they will be merged into one using the highest top and the lowest bottom<br>
 
 returns:<br>
 FVG = 1 if bullish fair value gap, -1 if bearish fair value gap<br>
