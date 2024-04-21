@@ -54,11 +54,14 @@ class smc:
     __version__ = "0.0.17"
 
     @classmethod
-    def fvg(cls, ohlc: DataFrame) -> Series:
+    def fvg(cls, ohlc: DataFrame, join_consecutive=False) -> Series:
         """
         FVG - Fair Value Gap
         A fair value gap is when the previous high is lower than the next low if the current candle is bullish.
         Or when the previous low is higher than the next high if the current candle is bearish.
+
+        parameters:
+        join_consecutive: bool - if there are multiple FVG in a row then they will be merged into one using the highest top and the lowest bottom
 
         returns:
         FVG = 1 if bullish fair value gap, -1 if bearish fair value gap
@@ -99,6 +102,14 @@ class smc:
             ),
             np.nan,
         )
+
+        # if there are multiple consecutive fvg then join them together using the highest top and lowest bottom and the last index
+        if join_consecutive:
+            for i in range(len(fvg)-1):
+                if fvg[i] == fvg[i + 1]:
+                    top[i+1] = max(top[i], top[i + 1])
+                    bottom[i+1] = min(bottom[i], bottom[i + 1])
+                    fvg[i] = top[i] = bottom[i] = np.nan
 
         mitigated_index = np.zeros(len(ohlc), dtype=np.int32)
         for i in np.where(~np.isnan(fvg))[0]:
