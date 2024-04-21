@@ -342,6 +342,12 @@ class smc:
             if np.any(mask):
                 j = np.argmax(mask) + i + 2
                 broken[i] = j
+                # if there are any unbroken bos or choch that started before this one and ended after this one then remove them
+                for k in np.where(np.logical_or(bos != 0, choch != 0))[0]:
+                    if k < i and broken[k] >= j:
+                        bos[k] = 0
+                        choch[k] = 0
+                        level[k] = 0
 
         # remove the ones that aren't broken
         for i in np.where(
