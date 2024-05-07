@@ -711,3 +711,96 @@ class smc:
 
         return pd.concat([previous_high, previous_low], axis=1)
 
+    @classmethod
+    def sessions(cls, ohlc: DataFrame, session: str, start_time: str = "", end_time: str = "", time_zone: str = "UTC") -> Series:
+        """
+        Sessions
+        This method returns wwhich candles are within the session specified
+
+        parameters:
+        session: str - the session you want to check (Sydney, Tokyo, London, New York, Custom)
+        start_time: str - the start time of the session in the format "HH:MM"
+        end_time: str - the end time of the session in the format "HH:MM"
+        time_zone: str - the you wish to identify the session in
+
+        returns:
+        Active = 1 if the candle is within the session, 0 if not
+        High = the highest point of the session
+        Low = the lowest point of the session
+
+        """
+
+        if session == "Custom" and (start_time == "" or end_time == ""):
+            raise ValueError("Custom session requires a start and end time")
+
+        default_sessions = {
+            "Sydney": {
+                "start": "21:00",
+                "end": "06:00",
+            },
+            "Tokyo": {
+                "start": "00:00",
+                "end": "09:00",
+            },
+            "London": {
+                "start": "07:00",
+                "end": "16:00",
+            },
+            "New York": {
+                "start": "13:00",
+                "end": "22:00",
+            },
+            "Asian kill zone": {
+                "start": "00:00",
+                "end": "04:00",
+            },
+            "London open kill zone": {
+                "start": "6:00",
+                "end": "9:00",
+            },
+            "New York kill zone": {
+                "start": "11:00",
+                "end": "14:00",
+            },
+            "london close kill zone": {
+                "start": "14:00",
+                "end": "16:00",
+            },
+            "Custom": {
+                "start": start_time,
+                "end": end_time,
+            }
+        }
+
+        ohlc.index = pd.to_datetime(ohlc.index)
+        if time_zone != "UTC":
+            time_zone = time_zone.replace("GMT", "Etc/GMT")
+            time_zone = time_zone.replace("UTC", "Etc/GMT")
+            ohlc.index = ohlc.index.tz_localize(time_zone).tz_convert("UTC")
+
+        start_time = datetime.strptime(default_sessions[session]["start"], "%H:%M").strftime("%H:%M")
+        start_time = datetime.strptime(start_time, "%H:%M")
+        end_time = datetime.strptime(default_sessions[session]["end"], "%H:%M").strftime("%H:%M")
+        end_time = datetime.strptime(end_time, "%H:%M")
+
+        # if the candles are between the start and end time then it is an active session
+        active = np.zeros(len(ohlc), dtype=np.int32)
+        high = np.zeros(len(ohlc), dtype=np.float32)
+        low = np.zeros(len(ohlc), dtype=np.float32)
+        
+        for i in range(len(ohlc)):
+            current_time = ohlc.index[i].strftime("%H:%M")
+            # convert current time to the second of the day
+            current_time = datetime.strptime(current_time, "%H:%M")
+            if (start_time < end_time and start_time <= current_time <= end_time) or \
+            (start_time >= end_time and (start_time <= current_time or current_time <= end_time)):
+                active[i] = 1
+                high[i] = max(ohlc["high"][i], high[i-1] if i > 0 else 0)
+                low[i] = min(ohlc["low"][i], low[i-1] if i > 0 and low[i-1] != 0 else float('inf'))
+
+        active = pd.Series(active, name="Active")
+        high = pd.Series(high, name="High")
+        low = pd.Series(low, name="Low")
+
+        return pd.concat([active, high, low], axis=1)
+
