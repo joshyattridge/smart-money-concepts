@@ -127,6 +127,25 @@ returns:<br>
 PreviousHigh = the previous high<br>
 PreviousLow = the previous low<br>
 
+### Sessions
+
+```python
+smc.sessions(ohlc, session, start_time, end_time, time_zone = "UTC")
+```
+
+This method returns which candles are within the session specified
+
+parameters:<br>
+session: str - the session you want to check (Sydney, Tokyo, London, New York, Asian kill zone, London open kill zone, New York kill zone, london close kill zone, Custom)<br>
+start_time: str - the start time of the session in the format "HH:MM" only required for custom session.<br>
+end_time: str - the end time of the session in the format "HH:MM" only required for custom session.<br>
+time_zone: str - the time zone of the candles can be in the format "UTC+0" or "GMT+0"<br>
+
+returns:<br>
+Active = 1 if the candle is within the session, 0 if not<br>
+High = the highest point of the session<br>
+Low = the lowest point of the session<br>
+
 ## Contributing
 
 This project is still in BETA so please feel free to contribute to the project. By creating your own indicators or improving the existing ones. If you are stuggling to find something to do then please check out the issues tab for requested changes.
