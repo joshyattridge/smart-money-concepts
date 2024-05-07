@@ -718,16 +718,15 @@ class smc:
         This method returns wwhich candles are within the session specified
 
         parameters:
-        session: str - the session you want to check (Sydney, Tokyo, London, New York, Custom)
-        start_time: str - the start time of the session in the format "HH:MM"
-        end_time: str - the end time of the session in the format "HH:MM"
-        time_zone: str - the you wish to identify the session in
+        session: str - the session you want to check (Sydney, Tokyo, London, New York, Asian kill zone, London open kill zone, New York kill zone, london close kill zone, Custom)
+        start_time: str - the start time of the session in the format "HH:MM" only required for custom session.
+        end_time: str - the end time of the session in the format "HH:MM" only required for custom session.
+        time_zone: str - the time zone of the candles can be in the format "UTC+0" or "GMT+0"
 
         returns:
         Active = 1 if the candle is within the session, 0 if not
         High = the highest point of the session
         Low = the lowest point of the session
-
         """
 
         if session == "Custom" and (start_time == "" or end_time == ""):
