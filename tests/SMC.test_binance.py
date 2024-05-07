@@ -292,18 +292,37 @@ def add_previous_high_low(fig, previous_high_low_data):
 
     return fig
 
+def add_sessions(fig, sessions):
+    for i in range(len(sessions["Active"])):
+        if sessions["Active"][i] == 1:
+            fig.add_shape(
+                type="rect",
+                x0=df.index[i],
+                y0=sessions["Low"][i],
+                x1=df.index[i+1],
+                y1=sessions["High"][i],
+                line=dict(
+                    width=0,
+                ),
+                fillcolor="blue",
+                opacity=0.5,
+            )
+    return fig
+
 fvg_data = smc.fvg(df)
 swing_highs_lows_data = smc.swing_highs_lows(df, swing_length=50)
 bos_choch_data = smc.bos_choch(df, swing_highs_lows_data)
 ob_data = smc.ob(df, swing_highs_lows_data)
 liquidity_data = smc.liquidity(df, swing_highs_lows_data)
 previous_high_low_data = smc.previous_high_low(df, time_frame="1W")
+sessions = smc.sessions(df, session="London")
 fig = add_FVG(fig, fvg_data)
 fig = add_swing_highs_lows(fig, swing_highs_lows_data)
 fig = add_bos_choch(fig, bos_choch_data)
 fig = add_OB(fig, ob_data)
 fig = add_liquidity(fig, liquidity_data)
 fig = add_previous_high_low(fig, previous_high_low_data)
+fig = add_sessions(fig, sessions)
 
 fig.update_layout(xaxis_rangeslider_visible=False)
 fig.update_layout(showlegend=False)
