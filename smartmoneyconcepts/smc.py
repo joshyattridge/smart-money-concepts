@@ -691,6 +691,8 @@ class smc:
                     "volume": "sum",
                 }
             )
+            # remove rows with nan values (ignoring weekends)
+            resampled_ohlc = resampled_ohlc.dropna()
             previous_high[i] = resampled_ohlc["high"][-2] if len(resampled_ohlc) > 1 else np.nan
             previous_low[i] = resampled_ohlc["low"][-2] if len(resampled_ohlc) > 1 else np.nan
 
