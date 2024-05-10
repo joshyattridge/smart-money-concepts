@@ -680,7 +680,12 @@ class smc:
 
         previous_high = np.zeros(len(ohlc), dtype=np.float32)
         previous_low = np.zeros(len(ohlc), dtype=np.float32)
+        broken_high = np.zeros(len(ohlc), dtype=np.int32)
+        broken_low = np.zeros(len(ohlc), dtype=np.int32)
 
+        currently_broken_high = False
+        currently_broken_low = False
+        last_broken_time = None
         for i in range(len(ohlc)):
             resampled_ohlc = ohlc[:i].resample(time_frame).agg(
                 {
@@ -691,15 +696,26 @@ class smc:
                     "volume": "sum",
                 }
             )
+            if len(resampled_ohlc) >= 1:
+                if last_broken_time != resampled_ohlc.index[-1]:
+                    currently_broken_high = False
+                    currently_broken_low = False
+                    last_broken_time = resampled_ohlc.index[-1]
             # remove rows with nan values (ignoring weekends)
             resampled_ohlc = resampled_ohlc.dropna()
             previous_high[i] = resampled_ohlc["high"][-2] if len(resampled_ohlc) > 1 else np.nan
             previous_low[i] = resampled_ohlc["low"][-2] if len(resampled_ohlc) > 1 else np.nan
+            currently_broken_high = ohlc["high"][i] > previous_high[i] or currently_broken_high
+            currently_broken_low = ohlc["low"][i] < previous_low[i] or currently_broken_low
+            broken_high[i] = 1 if currently_broken_high else 0
+            broken_low[i] = 1 if currently_broken_low else 0
 
         previous_high = pd.Series(previous_high, name="PreviousHigh")
         previous_low = pd.Series(previous_low, name="PreviousLow")
+        broken_high = pd.Series(broken_high, name="BrokenHigh")
+        broken_low = pd.Series(broken_low, name="BrokenLow")
 
-        return pd.concat([previous_high, previous_low], axis=1)
+        return pd.concat([previous_high, previous_low, broken_high, broken_low], axis=1)
 
     @classmethod
     def sessions(cls, ohlc: DataFrame, session: str, start_time: str = "", end_time: str = "", time_zone: str = "UTC") -> Series:
