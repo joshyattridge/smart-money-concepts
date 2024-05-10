@@ -260,16 +260,17 @@ def add_liquidity(fig, liquidity_data):
             )
     return fig
 
+
 def add_previous_high_low(fig, previous_high_low_data):
     high = previous_high_low_data["PreviousHigh"]
     low = previous_high_low_data["PreviousLow"]
     # draw a line horizontally for each high where the highs are the same consecutively
-    for i in range(len(high)-1):
-        if high.iloc[i] == high.iloc[i+1]:
+    for i in range(len(high) - 1):
+        if high.iloc[i] == high.iloc[i + 1]:
             fig.add_trace(
                 go.Scatter(
-                    x=[df.index[i], df.index[i+1]],
-                    y=[high.iloc[i], high.iloc[i+1]],
+                    x=[df.index[i], df.index[i + 1]],
+                    y=[high.iloc[i], high.iloc[i + 1]],
                     mode="lines",
                     line=dict(
                         color="lightblue",
@@ -277,12 +278,12 @@ def add_previous_high_low(fig, previous_high_low_data):
                 )
             )
     # draw a line horizontally for each low where the lows are the same consecutively
-    for i in range(len(low)-1):
-        if low.iloc[i] == low.iloc[i+1]:
+    for i in range(len(low) - 1):
+        if low.iloc[i] == low.iloc[i + 1]:
             fig.add_trace(
                 go.Scatter(
-                    x=[df.index[i], df.index[i+1]],
-                    y=[low.iloc[i], low.iloc[i+1]],
+                    x=[df.index[i], df.index[i + 1]],
+                    y=[low.iloc[i], low.iloc[i + 1]],
                     mode="lines",
                     line=dict(
                         color="lightblue",
@@ -292,6 +293,7 @@ def add_previous_high_low(fig, previous_high_low_data):
 
     return fig
 
+
 def add_sessions(fig, sessions):
     for i in range(len(sessions["Active"])):
         if sessions["Active"][i] == 1:
@@ -299,7 +301,7 @@ def add_sessions(fig, sessions):
                 type="rect",
                 x0=df.index[i],
                 y0=sessions["Low"][i],
-                x1=df.index[i+1],
+                x1=df.index[i + 1],
                 y1=sessions["High"][i],
                 line=dict(
                     width=0,
@@ -309,13 +311,51 @@ def add_sessions(fig, sessions):
             )
     return fig
 
+
+def add_retracements(fig, retracements):
+    for i in range(len(retracements)):
+        if (
+            (
+                (
+                    retracements["Direction"].iloc[i + 1]
+                    if i < len(retracements) - 1
+                    else 0
+                )
+                != retracements["Direction"].iloc[i]
+                or i == len(retracements) - 1
+            )
+            and retracements["Direction"].iloc[i] != 0
+            and (
+                retracements["Direction"].iloc[i + 1]
+                if i < len(retracements) - 1
+                else retracements["Direction"].iloc[i]
+            )
+            != 0
+        ):
+            fig.add_annotation(
+                x=df.index[i],
+                y=(
+                    df["high"].iloc[i]
+                    if retracements["Direction"].iloc[i] == -1
+                    else df["low"].iloc[i]
+                ),
+                xref="x",
+                yref="y",
+                text=f"C:{retracements['CurrentRetracement%'].iloc[i]}%<br>D:{retracements['DeepestRetracement%'].iloc[i]}%",
+                font=dict(color="white", size=8),
+                showarrow=False,
+            )
+    return fig
+
+
 fvg_data = smc.fvg(df)
 swing_highs_lows_data = smc.swing_highs_lows(df, swing_length=50)
 bos_choch_data = smc.bos_choch(df, swing_highs_lows_data)
 ob_data = smc.ob(df, swing_highs_lows_data)
 liquidity_data = smc.liquidity(df, swing_highs_lows_data)
-previous_high_low_data = smc.previous_high_low(df, time_frame="1W")
+previous_high_low_data = smc.previous_high_low(df, time_frame="1Y")
 sessions = smc.sessions(df, session="London")
+retracements = smc.retracements(df, swing_highs_lows_data)
 fig = add_FVG(fig, fvg_data)
 fig = add_swing_highs_lows(fig, swing_highs_lows_data)
 fig = add_bos_choch(fig, bos_choch_data)
@@ -323,6 +363,7 @@ fig = add_OB(fig, ob_data)
 fig = add_liquidity(fig, liquidity_data)
 fig = add_previous_high_low(fig, previous_high_low_data)
 fig = add_sessions(fig, sessions)
+fig = add_retracements(fig, retracements)
 
 fig.update_layout(xaxis_rangeslider_visible=False)
 fig.update_layout(showlegend=False)
