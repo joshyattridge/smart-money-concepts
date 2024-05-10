@@ -909,6 +909,8 @@ class smc:
         # remove the first 3 retracements as they get calculated incorrectly due to not enough data
         remove_first_count = 0
         for i in range(len(direction)):
+            if i + 1 == len(direction):
+                break
             if direction[i] != direction[i + 1]:
                 remove_first_count += 1
             direction[i] = 0
