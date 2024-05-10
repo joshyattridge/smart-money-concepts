@@ -146,6 +146,22 @@ Active = 1 if the candle is within the session, 0 if not<br>
 High = the highest point of the session<br>
 Low = the lowest point of the session<br>
 
+### Retracements
+
+```python
+smc.retracements(ohlc, swing_highs_lows)
+```
+
+This method returns the percentage of a retracement from the swing high or low
+
+parameters:<br>
+swing_highs_lows: DataFrame - provide the dataframe from the swing_highs_lows function<br>
+
+returns:<br>
+Direction = 1 if bullish retracement, -1 if bearish retracement<br>
+CurrentRetracement% = the current retracement percentage from the swing high or low<br>
+DeepestRetracement% = the deepest retracement percentage from the swing high or low<br>
+
 ## Contributing
 
 This project is still in BETA so please feel free to contribute to the project. By creating your own indicators or improving the existing ones. If you are stuggling to find something to do then please check out the issues tab for requested changes.
