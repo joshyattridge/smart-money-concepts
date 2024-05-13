@@ -475,7 +475,7 @@ class smc:
                     )
                     percentage[obIndex] = (
                         np.min([highVolume[obIndex], lowVolume[obIndex]], axis=0)
-                        / np.max([highVolume[obIndex], lowVolume[obIndex]], axis=0)
+                        / np.max([highVolume[obIndex], lowVolume[obIndex]], axis=0) if np.max([highVolume[obIndex], lowVolume[obIndex]], axis=0) != 0 else 1
                     ) * 100.0
 
         for i in range(len(ohlc)):
@@ -547,7 +547,7 @@ class smc:
                     highVolume[obIndex] = ohlc["volume"].iloc[close_index - 2]
                     percentage[obIndex] = (
                         np.min([highVolume[obIndex], lowVolume[obIndex]], axis=0)
-                        / np.max([highVolume[obIndex], lowVolume[obIndex]], axis=0)
+                        / np.max([highVolume[obIndex], lowVolume[obIndex]], axis=0) if np.max([highVolume[obIndex], lowVolume[obIndex]], axis=0) != 0 else 1
                     ) * 100.0
 
         ob = np.where(ob != 0, ob, np.nan)
