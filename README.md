@@ -95,6 +95,30 @@ Bottom = bottom of the order block<br>
 OBVolume = volume + 2 last volumes amounts<br>
 Percentage = strength of order block (min(highVolume, lowVolume)/max(highVolume,lowVolume))<br>
 
+
+### Order Blocks Numba (OB_numba)
+
+```python
+smc.ob_numba(ohlc, swing_highs_lows, close_mitigation = False)
+```
+ob_numba - Order Blocks using numba
+Numba is an open source JIT compiler that translates a subset of Python and NumPy code into fast machine code.
+First usage might take more time becuase of initial compilation of python code to machine code, so please use smaller dataset for initial run, in subsequent runs it is very fast in the order of 100x in some cases.
+
+Just like OB, this method also detects order blocks when there is a high amount of market orders exist on a price range.
+Results might very slightly than OB.
+
+parameters:<br>
+swing_highs_lows: DataFrame - provide the dataframe from the swing_highs_lows function<br>
+close_mitigation: bool - if True then the order block will be mitigated based on the close of the candle otherwise it will be the high/low.
+
+returns:<br>
+OB = 1 if bullish order block, -1 if bearish order block<br>
+Top = top of the order block<br>
+Bottom = bottom of the order block<br>
+OBVolume = volume + 2 last volumes amounts<br>
+Percentage = strength of order block (min(highVolume, lowVolume)/max(highVolume,lowVolume))<br>
+
 ### Liquidity
 
 ```python
