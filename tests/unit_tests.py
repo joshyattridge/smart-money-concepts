@@ -60,18 +60,6 @@ class TestSmartMoneyConcepts(unittest.TestCase):
         print("ob test time: ", time.time() - start_time)
         pd.testing.assert_frame_equal(ob_data, ob_result_data, check_dtype=False)
 
-    def test_ob_numba(self):
-        start_time = time.time()
-        swing_highs_lows_data = smc.swing_highs_lows(df, swing_length=5)
-        ob_numba_data = smc.ob_numba(df, swing_highs_lows_data)
-        ob_numba_result_data = pd.read_csv(
-            os.path.join("test_data", test_instrument, "ob_numba_result_data.csv")
-        )
-        print("ob_numba test time: ", time.time() - start_time)
-        pd.testing.assert_frame_equal(
-            ob_numba_data, ob_numba_result_data, check_dtype=False
-        )
-
     def test_liquidity(self):
         start_time = time.time()
         swing_highs_lows_data = smc.swing_highs_lows(df, swing_length=5)
@@ -138,16 +126,6 @@ if __name__ == "__main__":
 # ob_data = smc.ob(df, swing_highs_lows_data)
 # ob_data.to_csv(
 #     os.path.join("test_data", test_instrument, "ob_result_data.csv"), index=False
-# )
-
-# small_df = df[:500].copy()
-# swing_highs_lows_data = smc.swing_highs_lows(small_df, swing_length=5)
-# ob_numba_data = smc.ob_numba(small_df, swing_highs_lows_data)
-
-# ob_numba_data = smc.ob_numba(df, swing_highs_lows_data)
-# ob_numba_data.to_csv(
-#     os.path.join("test_data", test_instrument, "ob_numba_result_data.csv"),
-#     index=False,
 # )
 
 # liquidity_data = smc.liquidity(df, swing_highs_lows_data)
