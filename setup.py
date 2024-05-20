@@ -18,8 +18,21 @@ setup(
     long_description_content_type="text/markdown",
     long_description=LONG_DESCRIPTION,
     packages=["smartmoneyconcepts"],
-    install_requires=["pandas==2.0.2", "numpy==1.24.3"],
-    keywords=['smart', 'money', 'concepts', 'ict', 'indicators', 'trading', 'forex', 'stocks', 'crypto', 'order', 'blocks', 'liquidity'],
+    install_requires=["pandas==2.0.2", "numpy==1.24.3", "numba==0.59.1"],
+    keywords=[
+        "smart",
+        "money",
+        "concepts",
+        "ict",
+        "indicators",
+        "trading",
+        "forex",
+        "stocks",
+        "crypto",
+        "order",
+        "blocks",
+        "liquidity",
+    ],
     url="https://github.com/joshyattridge/smartmoneyconcepts",
     classifiers=[
         "Development Status :: 1 - Planning",
@@ -28,5 +41,5 @@ setup(
         "Operating System :: Unix",
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: Microsoft :: Windows",
-    ]
+    ],
 )

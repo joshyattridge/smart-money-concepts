@@ -95,6 +95,7 @@ Bottom = bottom of the order block<br>
 OBVolume = volume + 2 last volumes amounts<br>
 Percentage = strength of order block (min(highVolume, lowVolume)/max(highVolume,lowVolume))<br>
 
+
 ### Liquidity
 
 ```python
