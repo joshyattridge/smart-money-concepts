@@ -1,0 +1,25 @@
+name: Run Unittest
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize, closed]
+
+jobs:
+  run_test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - uses: abatilo/actions-poetry@v2
+        with:
+          poetry-version: "1.3.2"
+      - name: Install Dependencies
+        run: poetry install
+      - name: Pytest
+        run: poetry run pytest
+        env:
+          HEAD: ${{ github.ref }}
