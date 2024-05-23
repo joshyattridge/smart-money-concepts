@@ -734,10 +734,10 @@ class smc:
                     last_broken_time = resampled_ohlc.index[-1]
             # remove rows with nan values (ignoring weekends)
             resampled_ohlc = resampled_ohlc.dropna()
-            previous_high[i] = resampled_ohlc["high"][-2] if len(resampled_ohlc) > 1 else np.nan
-            previous_low[i] = resampled_ohlc["low"][-2] if len(resampled_ohlc) > 1 else np.nan
-            currently_broken_high = ohlc["high"][i] > previous_high[i] or currently_broken_high
-            currently_broken_low = ohlc["low"][i] < previous_low[i] or currently_broken_low
+            previous_high[i] = resampled_ohlc["high"].iloc[-2] if len(resampled_ohlc) > 1 else np.nan
+            previous_low[i] = resampled_ohlc["low"].iloc[-2] if len(resampled_ohlc) > 1 else np.nan
+            currently_broken_high = ohlc["high"].iloc[i] > previous_high[i] or currently_broken_high
+            currently_broken_low = ohlc["low"].iloc[i] < previous_low[i] or currently_broken_low
             broken_high[i] = 1 if currently_broken_high else 0
             broken_low[i] = 1 if currently_broken_low else 0
 
