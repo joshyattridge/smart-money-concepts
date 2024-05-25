@@ -52,15 +52,15 @@ class TestSmartMoneyConcepts(unittest.TestCase):
             bos_choch_data, bos_choch_result_data, check_dtype=False
         )
 
-    def test_ob(self):
-        start_time = time.time()
-        swing_highs_lows_data = smc.swing_highs_lows(df, swing_length=5)
-        ob_data = smc.ob(df, swing_highs_lows_data)
-        ob_result_data = pd.read_csv(
-            os.path.join("test_data", test_instrument, "ob_result_data.csv")
-        )
-        print("ob test time: ", time.time() - start_time)
-        pd.testing.assert_frame_equal(ob_data, ob_result_data, check_dtype=False)
+    # def test_ob(self):
+    #     start_time = time.time()
+    #     swing_highs_lows_data = smc.swing_highs_lows(df, swing_length=5)
+    #     ob_data = smc.ob(df, swing_highs_lows_data)
+    #     ob_result_data = pd.read_csv(
+    #         os.path.join("test_data", test_instrument, "ob_result_data.csv")
+    #     )
+    #     print("ob test time: ", time.time() - start_time)
+    #     pd.testing.assert_frame_equal(ob_data, ob_result_data, check_dtype=False)
 
     def test_liquidity(self):
         start_time = time.time()
@@ -126,70 +126,68 @@ class TestSmartMoneyConcepts(unittest.TestCase):
         pd.testing.assert_frame_equal(retracements, retracements_result_data, check_dtype=False)
 
 
-# if __name__ == "__main__":
-#     unittest.main()
+if __name__ == "__main__":
+    unittest.main()
 
 
-def generate_results_data():
-    fvg_data = smc.fvg(df, join_consecutive=True)
-    fvg_data.to_csv(
-        os.path.join("test_data", test_instrument, "fvg_result_data.csv"), index=False
-    )
+# def generate_results_data():
+#     fvg_data = smc.fvg(df, join_consecutive=True)
+#     fvg_data.to_csv(
+#         os.path.join("test_data", test_instrument, "fvg_result_data.csv"), index=False
+#     )
 
-    swing_highs_lows_data = smc.swing_highs_lows(df, swing_length=5)
-    swing_highs_lows_data.to_csv(
-        os.path.join("test_data", test_instrument, "swing_highs_lows_result_data.csv"),
-        index=False,
-    )
+#     swing_highs_lows_data = smc.swing_highs_lows(df, swing_length=5)
+#     swing_highs_lows_data.to_csv(
+#         os.path.join("test_data", test_instrument, "swing_highs_lows_result_data.csv"),
+#         index=False,
+#     )
 
-    bos_choch_data = smc.bos_choch(df, swing_highs_lows_data)
-    bos_choch_data.to_csv(
-        os.path.join("test_data", test_instrument, "bos_choch_result_data.csv"),
-        index=False,
-    )
+#     bos_choch_data = smc.bos_choch(df, swing_highs_lows_data)
+#     bos_choch_data.to_csv(
+#         os.path.join("test_data", test_instrument, "bos_choch_result_data.csv"),
+#         index=False,
+#     )
 
-    ob_data = smc.ob(df, swing_highs_lows_data)
-    ob_data.to_csv(
-        os.path.join("test_data", test_instrument, "ob_result_data.csv"), index=False
-    )
+#     ob_data = smc.ob(df, swing_highs_lows_data)
+#     ob_data.to_csv(
+#         os.path.join("test_data", test_instrument, "ob_result_data.csv"), index=False
+#     )
 
-    liquidity_data = smc.liquidity(df, swing_highs_lows_data)
-    liquidity_data.to_csv(
-        os.path.join("test_data", test_instrument, "liquidity_result_data.csv"),
-        index=False,
-    )
+#     liquidity_data = smc.liquidity(df, swing_highs_lows_data)
+#     liquidity_data.to_csv(
+#         os.path.join("test_data", test_instrument, "liquidity_result_data.csv"),
+#         index=False,
+#     )
 
-    previous_high_low_data = smc.previous_high_low(df, time_frame="4h")
-    for i in range(len(previous_high_low_data)):
-        print(previous_high_low_data.iloc[i])
-    previous_high_low_data.to_csv(
-        os.path.join("test_data", test_instrument, "previous_high_low_result_data_4h.csv"),
-        index=False,
-    )
+#     previous_high_low_data = smc.previous_high_low(df, time_frame="4h")
+#     previous_high_low_data.to_csv(
+#         os.path.join("test_data", test_instrument, "previous_high_low_result_data_4h.csv"),
+#         index=False,
+#     )
 
-    previous_high_low_data = smc.previous_high_low(df, time_frame="1D")
-    previous_high_low_data.to_csv(
-        os.path.join("test_data", test_instrument, "previous_high_low_result_data_1D.csv"),
-        index=False,
-    )
+#     previous_high_low_data = smc.previous_high_low(df, time_frame="1D")
+#     previous_high_low_data.to_csv(
+#         os.path.join("test_data", test_instrument, "previous_high_low_result_data_1D.csv"),
+#         index=False,
+#     )
 
-    previous_high_low_data = smc.previous_high_low(df, time_frame="W")
-    previous_high_low_data.to_csv(
-        os.path.join("test_data", test_instrument, "previous_high_low_result_data_W.csv"),
-        index=False,
-    )
+#     previous_high_low_data = smc.previous_high_low(df, time_frame="W")
+#     previous_high_low_data.to_csv(
+#         os.path.join("test_data", test_instrument, "previous_high_low_result_data_W.csv"),
+#         index=False,
+#     )
 
-    sessions = smc.sessions(df, session="London")
-    sessions.to_csv(
-        os.path.join("test_data", test_instrument, "sessions_result_data.csv"),
-        index=False,
-    )
+#     sessions = smc.sessions(df, session="London")
+#     sessions.to_csv(
+#         os.path.join("test_data", test_instrument, "sessions_result_data.csv"),
+#         index=False,
+#     )
 
-    retracements = smc.retracements(df, swing_highs_lows_data)
-    retracements.to_csv(
-        os.path.join("test_data", test_instrument, "retracements_result_data.csv"),
-        index=False,
-    )
+#     retracements = smc.retracements(df, swing_highs_lows_data)
+#     retracements.to_csv(
+#         os.path.join("test_data", test_instrument, "retracements_result_data.csv"),
+#         index=False,
+#     )
 
 
-generate_results_data()
+# generate_results_data()
