@@ -59,7 +59,7 @@ def previous_high_low_result_data():
     test_instrument = "EURUSD"
     return pd.read_csv(
         os.path.join(
-            "tests/test_data", test_instrument, "previous_high_low_result_data.csv"
+            "tests/test_data", test_instrument, "previous_high_low_result_data_4h.csv"
         )
     )
 
