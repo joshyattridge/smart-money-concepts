@@ -7,11 +7,12 @@ import os
 def df():
     test_instrument = "EURUSD"
     instrument_data = f"{test_instrument}_15M.csv"
-    df = pd.read_csv(os.path.join("test_data", test_instrument, instrument_data))
+    df = pd.read_csv(
+        os.path.join("tests/test_data", test_instrument, instrument_data)
+    )
     df = df.set_index("Date")
     df.index = pd.to_datetime(df.index)
     return df
-
 
 @pytest.fixture
 def fvg_result_data():
