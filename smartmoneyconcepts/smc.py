@@ -724,7 +724,6 @@ class smc:
         currently_broken_low = False
         last_broken_time = None
         for i in range(len(ohlc)):
-            # remove rows with nan values (ignoring weekends)
             resampled_previous_index = np.where(
                 resampled_ohlc.index < ohlc.index[i]
             )[0]
@@ -732,7 +731,12 @@ class smc:
                 previous_high[i] = np.nan
                 previous_low[i] = np.nan
                 continue
-            resampled_previous_index = resampled_previous_index[-1]
+            resampled_previous_index = resampled_previous_index[-2]
+
+            if last_broken_time != resampled_previous_index:
+                currently_broken_high = False
+                currently_broken_low = False
+                last_broken_time = resampled_previous_index
 
             previous_high[i] = resampled_ohlc["high"].iloc[resampled_previous_index] 
             previous_low[i] = resampled_ohlc["low"].iloc[resampled_previous_index]
