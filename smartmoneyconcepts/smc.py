@@ -848,9 +848,9 @@ class smc:
                 and (start_time <= current_time or current_time <= end_time)
             ):
                 active[i] = 1
-                high[i] = max(ohlc["high"][i], high[i - 1] if i > 0 else 0)
+                high[i] = max(ohlc["high"].iloc[i], high[i - 1] if i > 0 else 0)
                 low[i] = min(
-                    ohlc["low"][i],
+                    ohlc["low"].iloc[i],
                     low[i - 1] if i > 0 and low[i - 1] != 0 else float("inf"),
                 )
 
@@ -897,7 +897,7 @@ class smc:
 
             if direction[i - 1] == 1:
                 current_retracement[i] = round(
-                    100 - (((ohlc["low"][i] - bottom) / (top - bottom)) * 100), 1
+                    100 - (((ohlc["low"].iloc[i] - bottom) / (top - bottom)) * 100), 1
                 )
                 deepest_retracement[i] = max(
                     (
@@ -909,7 +909,7 @@ class smc:
                 )
             if direction[i] == -1:
                 current_retracement[i] = round(
-                    100 - ((ohlc["high"][i] - top) / (bottom - top)) * 100, 1
+                    100 - ((ohlc["high"].iloc[i] - top) / (bottom - top)) * 100, 1
                 )
                 deepest_retracement[i] = max(
                     (
