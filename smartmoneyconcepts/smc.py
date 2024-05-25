@@ -710,32 +710,32 @@ class smc:
         broken_high = np.zeros(len(ohlc), dtype=np.int32)
         broken_low = np.zeros(len(ohlc), dtype=np.int32)
 
+        resampled_ohlc = ohlc.resample(time_frame).agg(
+            {
+                "open": "first",
+                "high": "max",
+                "low": "min",
+                "close": "last",
+                "volume": "sum",
+            }
+        ).dropna()
+
         currently_broken_high = False
         currently_broken_low = False
         last_broken_time = None
         for i in range(len(ohlc)):
-            resampled_ohlc = (
-                ohlc[:i]
-                .resample(time_frame)
-                .agg(
-                    {
-                        "open": "first",
-                        "high": "max",
-                        "low": "min",
-                        "close": "last",
-                        "volume": "sum",
-                    }
-                )
-            )
-            if len(resampled_ohlc) >= 1:
-                if last_broken_time != resampled_ohlc.index[-1]:
-                    currently_broken_high = False
-                    currently_broken_low = False
-                    last_broken_time = resampled_ohlc.index[-1]
             # remove rows with nan values (ignoring weekends)
-            resampled_ohlc = resampled_ohlc.dropna()
-            previous_high[i] = resampled_ohlc["high"].iloc[-2] if len(resampled_ohlc) > 1 else np.nan
-            previous_low[i] = resampled_ohlc["low"].iloc[-2] if len(resampled_ohlc) > 1 else np.nan
+            resampled_previous_index = np.where(
+                resampled_ohlc.index < ohlc.index[i]
+            )[0]
+            if len(resampled_previous_index) <= 1:
+                previous_high[i] = np.nan
+                previous_low[i] = np.nan
+                continue
+            resampled_previous_index = resampled_previous_index[-1]
+
+            previous_high[i] = resampled_ohlc["high"].iloc[resampled_previous_index] 
+            previous_low[i] = resampled_ohlc["low"].iloc[resampled_previous_index]
             currently_broken_high = ohlc["high"].iloc[i] > previous_high[i] or currently_broken_high
             currently_broken_low = ohlc["low"].iloc[i] < previous_low[i] or currently_broken_low
             broken_high[i] = 1 if currently_broken_high else 0
