@@ -219,6 +219,135 @@ class smc:
         )
 
     @classmethod
+    def swing_highs_lows_forward(
+        cls,
+        ohlc: pd.DataFrame,
+        swing_length: int,
+        remove_consecutive_points: bool = False,
+    ) -> pd.DataFrame:
+        """
+        Swing Highs and Lows
+        A swing high is when the current high is the highest high out of the swing_length amount of candles after current candle.
+        A swing low is when the current low is the lowest low out of the swing_length amount of candles after current candle.
+
+        parameters:
+        swing_length: int - the amount of candles to look forward to determine the swing high or low
+        remove_consecutive_points: bool - remove consecutive highs and lows points.
+
+        returns:
+        HighLow = 1 if swing high, -1 if swing low
+        Level = the level of the swing high or low
+        """
+
+        if swing_length <= 0:
+            raise ValueError("swing_length should be positive integer")
+
+        swing_highs_lows = np.full(len(ohlc), np.nan)
+
+        future_highs = ohlc["high"].shift(1)
+        future_lows = ohlc["low"].shift(1)
+
+        swing_highs = future_highs == future_highs.rolling(
+            window=swing_length + 1, min_periods=swing_length
+        ).max().shift(-swing_length)
+
+        swing_lows = future_lows == future_lows.rolling(
+            window=swing_length + 1, min_periods=swing_length
+        ).min().shift(-swing_length)
+
+        # set swing high lows
+        swing_highs_lows[swing_highs] = 1
+        swing_highs_lows[swing_lows] = -1
+        swing_highs_lows = np.roll(swing_highs_lows, -1)
+
+        while True:
+            positions = np.where(~np.isnan(swing_highs_lows))[0]
+
+            if len(positions) < 2:
+                break
+
+            current = swing_highs_lows[positions[:-1]]
+            next = swing_highs_lows[positions[1:]]
+
+            highs = ohlc["high"].iloc[positions[:-1]].values
+            lows = ohlc["low"].iloc[positions[:-1]].values
+
+            next_highs = ohlc["high"].iloc[positions[1:]].values
+            next_lows = ohlc["low"].iloc[positions[1:]].values
+
+            index_to_remove = np.zeros(len(positions), dtype=bool)
+
+            consecutive_highs = (current == 1) & (next == 1)
+
+            if remove_consecutive_points:
+                index_to_remove[:-1] |= consecutive_highs & (highs < next_highs)
+                index_to_remove[1:] |= consecutive_highs & (highs >= next_highs)
+            else:
+
+                index_to_remove[:-1] |= (
+                    consecutive_highs
+                    & (highs < next_highs)
+                    & (positions[1:] - positions[:-1] < swing_length)
+                )
+                index_to_remove[1:] |= (
+                    consecutive_highs
+                    & (highs >= next_highs)
+                    & (positions[1:] - positions[:-1] < swing_length)
+                )
+
+            consecutive_lows = (current == -1) & (next == -1)
+            if remove_consecutive_points:
+                index_to_remove[:-1] |= consecutive_lows & (lows > next_lows)
+                index_to_remove[1:] |= consecutive_lows & (lows <= next_lows)
+            else:
+                index_to_remove[:-1] |= (
+                    consecutive_lows
+                    & (lows > next_lows)
+                    & (positions[1:] - positions[:-1] < swing_length)
+                )
+                index_to_remove[1:] |= (
+                    consecutive_lows
+                    & (lows <= next_lows)
+                    & (positions[1:] - positions[:-1] < swing_length)
+                )
+
+            if not index_to_remove.any():
+                break
+
+            swing_highs_lows[positions[index_to_remove]] = np.nan
+
+        positions = np.where(~np.isnan(swing_highs_lows))[0]
+
+        if len(positions) > 0:
+            before_first = ohlc.iloc[: positions[0]]
+            if len(before_first) > 0:
+                if swing_highs_lows[positions[0]] == 1:
+                    swing_highs_lows[before_first["low"].idxmin()] = -1
+                else:
+                    swing_highs_lows[before_first["high"].idxmax()] = 1
+
+            after_last = ohlc.iloc[positions[-1] :]
+            if len(after_last) > 0:
+                if swing_highs_lows[positions[-1]] == 1:
+                    swing_highs_lows[after_last["low"].idxmin()] = -1
+                else:
+                    swing_highs_lows[after_last["high"].idxmax()] = 1
+
+        level = np.where(
+            ~np.isnan(swing_highs_lows),
+            np.where(swing_highs_lows == 1, ohlc["high"], ohlc["low"]),
+            np.nan,
+        )
+
+        return pd.concat(
+            [
+                pd.Series(swing_highs_lows, name="HighLow"),
+                pd.Series(level, name="Level"),
+            ],
+            axis=1,
+        )
+
+    @classmethod
     def bos_choch(
         cls, ohlc: DataFrame, swing_highs_lows: DataFrame, close_break: bool = True
     ) -> Series:
