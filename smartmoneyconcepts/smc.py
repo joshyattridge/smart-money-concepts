@@ -501,8 +501,10 @@ class smc:
     def ob(
         cls,
         ohlc: DataFrame,
-        swing_highs_lows: DataFrame,
-        close_mitigation: bool = False,
+        shl: DataFrame,
+        close_mitigation: bool = True,
+        use_bos: bool = True,
+        use_choch: bool = True,
     ) -> DataFrame:
         """
         OB - Order Blocks
@@ -516,202 +518,303 @@ class smc:
         OB = 1 if bullish order block, -1 if bearish order block
         Top = top of the order block
         Bottom = bottom of the order block
+        ConfirmDate = datetime when order block was confirmed (when structure was confirmed that formed the order block)
+        MitigationDate = datetime when order block was mitigated
+        MitigatedIndex = index when order block was mitigated
         OBVolume = volume + 2 last volumes amounts
         Percentage = strength of order block (min(highVolume, lowVolume)/max(highVolume,lowVolume))
         """
-        swing_highs_lows = swing_highs_lows.copy()
-        ohlc_len = len(ohlc)
 
-        _open = ohlc["open"].values
+        _high_low = shl["HighLow"].values
+        _dates = ohlc["date"].values.astype("datetime64[ns]")
         _high = ohlc["high"].values
         _low = ohlc["low"].values
         _close = ohlc["close"].values
-        _volume = ohlc["volume"].values
-        _swing_high_low = swing_highs_lows["HighLow"].values
 
-        crossed = np.full(len(ohlc), False, dtype=bool)
-        ob = np.zeros(len(ohlc), dtype=np.int32)
-        top = np.zeros(len(ohlc), dtype=np.float32)
-        bottom = np.zeros(len(ohlc), dtype=np.float32)
+        shl_len = len(_dates)
+        bos = np.zeros(shl_len, dtype=np.int16)
+        choch = np.zeros(shl_len, dtype=np.int16)
+        bos_level = np.zeros(shl_len, dtype=np.float64)
+        structure_complete_date = np.full(
+            shl_len, np.datetime64("NaT"), dtype="datetime64[ns]"
+        )
+
+        ob = np.zeros(shl_len, dtype=np.int16)
+        ob_confirm_date = np.full(shl_len, np.datetime64("NaT"), dtype="datetime64[ns]")
+        ob_mitigation_date = np.full(
+            shl_len, np.datetime64("NaT"), dtype="datetime64[ns]"
+        )
+        ob_mitigated_index = np.zeros(shl_len, dtype=np.int64)
         obVolume = np.zeros(len(ohlc), dtype=np.float32)
         lowVolume = np.zeros(len(ohlc), dtype=np.float32)
         highVolume = np.zeros(len(ohlc), dtype=np.float32)
         percentage = np.zeros(len(ohlc), dtype=np.int32)
-        mitigated_index = np.zeros(len(ohlc), dtype=np.int32)
-        breaker = np.full(len(ohlc), False, dtype=bool)
 
-        for i in range(ohlc_len):
-            close_index = i
+        very_high_no = 9999999
+        very_low_no = -1
+        last_swing_high_index = 0
+        last_swing_low_index = 0
+        last_swing_high = very_high_no
+        last_swing_low = very_low_no
+        last_ob_high = very_high_no
+        last_ob_low = very_low_no
+        ob_high_indices = np.zeros((0, 2), dtype=np.int64)
+        ob_low_indices = np.zeros((0, 2), dtype=np.int64)
 
-            # Bullish Order Block
-            if len(ob[ob == 1]) > 0:
-                for j in range(len(ob) - 1, -1, -1):
-                    if ob[j] == 1:
-                        currentOB = j
-                        if breaker[currentOB]:
-                            if _high[close_index] > top[currentOB]:
-                                ob[j] = top[j] = bottom[j] = obVolume[j] = lowVolume[j] = (
-                                    highVolume[j]
-                                ) = mitigated_index[j] = percentage[j] = 0.0
+        trend = _high_low[np.flatnonzero(~np.isnan(_high_low))[0]]
+        if close_mitigation:
+            for i in range(shl_len):
+                use_structure = False
 
-                        elif (
-                            not close_mitigation and _low[close_index] < bottom[currentOB]
-                        ) or (
-                            close_mitigation
-                            and min(
-                                _open[close_index],
-                                _close[close_index],
-                            )
-                            < bottom[currentOB]
-                        ):
-                            breaker[currentOB] = True
-                            mitigated_index[currentOB] = close_index - 1
+                # new structure completed on up side
+                if _close[i] >= last_swing_high:
+                    if trend == 1:
+                        bos[last_swing_high_index] = 1
+                        if use_bos:
+                            use_structure = True
+                    else:
+                        choch[last_swing_high_index] = 1
+                        trend = 1
+                        if use_choch:
+                            use_structure = True
 
-            last_top_indices = np.where(
-                (_swing_high_low == 1)
-                & (np.arange(len(swing_highs_lows["HighLow"])) < close_index)
-            )[0]
+                    bos_level[last_swing_high_index] = last_swing_high
+                    structure_complete_date[last_swing_high_index] = _dates[i]
 
-            if last_top_indices.size > 0:
-                last_top_index = np.max(last_top_indices)
-            else:
-                last_top_index = None
-
-            if last_top_index is not None:
-
-                swing_top_price = _high[last_top_index]
-                if _close[close_index] > swing_top_price and not crossed[last_top_index]:
-                    crossed[last_top_index] = True
-                    obBtm = _high[close_index - 1]
-                    obTop = _low[close_index - 1]
-                    obIndex = close_index - 1
-                    for j in range(1, close_index - last_top_index):
-                        obBtm = min(
-                            _low[last_top_index + j],
-                            obBtm,
-                        )
-                        if obBtm == _low[last_top_index + j]:
-                            obTop = _high[last_top_index + j]
-                        obIndex = (
-                            last_top_index + j
-                            if obBtm == _low[last_top_index + j]
-                            else obIndex
+                    if use_structure:
+                        ob[last_swing_low_index] = -1
+                        ob_confirm_date[last_swing_low_index] = _dates[i]
+                        ob_low_indices = np.concatenate(
+                            (
+                                ob_low_indices,
+                                np.array([[last_swing_low_index, last_swing_low]]),
+                            ),
+                            axis=0,
                         )
 
-                    ob[obIndex] = 1
-                    top[obIndex] = obTop
-                    bottom[obIndex] = obBtm
-                    obVolume[obIndex] = (
-                        _volume[close_index]
-                        + _volume[close_index - 1]
-                        + _volume[close_index - 2]
-                    )
-                    lowVolume[obIndex] = _volume[close_index - 2]
-                    highVolume[obIndex] = _volume[close_index] + _volume[close_index - 1]
-                    percentage[obIndex] = (
-                        np.min([highVolume[obIndex], lowVolume[obIndex]], axis=0)
-                        / np.max([highVolume[obIndex], lowVolume[obIndex]], axis=0)
-                        if np.max([highVolume[obIndex], lowVolume[obIndex]], axis=0) != 0
-                        else 1
-                    ) * 100.0
+                    if last_swing_low > last_ob_low:
+                        last_ob_low = last_swing_low
 
-        for i in range(len(ohlc)):
-            close_index = i
-            close_price = _close[close_index]
+                    last_swing_high = very_high_no
+                    last_swing_high_index = very_low_no
 
-            # Bearish Order Block
-            if len(ob[ob == -1]) > 0:
-                for j in range(len(ob) - 1, -1, -1):
-                    if ob[j] == -1:
-                        currentOB = j
-                        if breaker[currentOB]:
-                            if _low[close_index] < bottom[currentOB]:
+                # upper order block mitigated
+                if _close[i] >= last_ob_high:
+                    idx_to_delete = None
+                    for row_idx, row in enumerate(ob_high_indices):
+                        ob_high_index, swing_high = row
+                        if last_ob_high == swing_high:
+                            idx_to_delete = row_idx
+                            ob_mitigation_date[int(ob_high_index)] = _dates[i]
+                            ob_mitigated_index[int(ob_high_index)] = i
 
-                                ob[j] = top[j] = bottom[j] = obVolume[j] = lowVolume[j] = (
-                                    highVolume[j]
-                                ) = mitigated_index[j] = percentage[j] = 0.0
+                    mask = np.ones(ob_high_indices.shape[0], dtype=bool)
+                    if idx_to_delete is not None:
+                        mask[idx_to_delete] = False
+                        ob_high_indices = ob_high_indices[mask]
+                    if np.any(ob_high_indices):
+                        last_ob_high = ob_high_indices[:, 1].min()
+                    else:
+                        last_ob_high = very_high_no
 
-                        elif (
-                            not close_mitigation and _high[close_index] > top[currentOB]
-                        ) or (
-                            close_mitigation
-                            and max(
-                                _open[close_index],
-                                _close[close_index],
-                            )
-                            > top[currentOB]
-                        ):
-                            breaker[currentOB] = True
-                            mitigated_index[currentOB] = close_index
+                # new structure completed on down side
+                if _close[i] <= last_swing_low:
+                    if trend == -1:
+                        bos[last_swing_low_index] = -1
+                        if use_bos:
+                            use_structure = True
+                    else:
+                        choch[last_swing_low_index] = -1
+                        trend = -1
+                        if use_choch:
+                            use_structure = True
 
-            last_btm_indices = np.where(
-                (swing_highs_lows["HighLow"] == -1)
-                & (np.arange(len(swing_highs_lows["HighLow"])) < close_index)
-            )[0]
-            if last_btm_indices.size > 0:
-                last_btm_index = np.max(last_btm_indices)
-            else:
-                last_btm_index = None
+                    bos_level[last_swing_low_index] = last_swing_low
+                    structure_complete_date[last_swing_low_index] = _dates[i]
 
-            if last_btm_index is not None:
-                swing_btm_price = _low[last_btm_index]
-                if close_price < swing_btm_price and not crossed[last_btm_index]:
-                    crossed[last_btm_index] = True
-                    obBtm = _low[close_index - 1]
-                    obTop = _high[close_index - 1]
-                    obIndex = close_index - 1
-                    for j in range(1, close_index - last_btm_index):
-                        obTop = max(_high[last_btm_index + j], obTop)
-                        obBtm = (
-                            _low[last_btm_index + j]
-                            if obTop == _high[last_btm_index + j]
-                            else obBtm
-                        )
-                        obIndex = (
-                            last_btm_index + j
-                            if obTop == _high[last_btm_index + j]
-                            else obIndex
+                    if use_structure:
+                        ob[last_swing_high_index] = 1
+                        ob_confirm_date[last_swing_high_index] = _dates[i]
+
+                        ob_high_indices = np.concatenate(
+                            (
+                                ob_high_indices,
+                                np.array([[last_swing_high_index, last_swing_high]]),
+                            ),
+                            axis=0,
                         )
 
-                    ob[obIndex] = -1
-                    top[obIndex] = obTop
-                    bottom[obIndex] = obBtm
-                    obVolume[obIndex] = (
-                        _volume[close_index]
-                        + _volume[close_index - 1]
-                        + _volume[close_index - 2]
-                    )
-                    lowVolume[obIndex] = _volume[close_index] + _volume[close_index - 1]
-                    highVolume[obIndex] = _volume[close_index - 2]
-                    percentage[obIndex] = (
-                        np.min([highVolume[obIndex], lowVolume[obIndex]], axis=0)
-                        / np.max([highVolume[obIndex], lowVolume[obIndex]], axis=0)
-                        if np.max([highVolume[obIndex], lowVolume[obIndex]], axis=0) != 0
-                        else 1
-                    ) * 100.0
+                    if last_swing_high < last_ob_high:
+                        last_ob_high = last_swing_high
 
+                    last_swing_low = 0
+                    last_swing_low_index = 0
+
+                # lower order block mitigated
+                if _close[i] <= last_ob_low:
+
+                    idx_to_delete = None
+                    for row_idx, row in enumerate(ob_low_indices):
+                        ob_low_index, swing_low = row
+                        if last_ob_low == swing_low:
+                            idx_to_delete = row_idx
+                            ob_mitigation_date[int(ob_low_index)] = _dates[i]
+                            ob_mitigated_index[int(ob_low_index)] = i
+
+                    mask = np.ones(ob_low_indices.shape[0], dtype=bool)
+                    if idx_to_delete is not None:
+                        mask[idx_to_delete] = False
+                        ob_low_indices = ob_low_indices[mask]
+
+                    if np.any(ob_low_indices):
+                        last_ob_low = ob_low_indices[:, 1].max()
+                    else:
+                        last_ob_low = very_low_no
+
+                if _high_low[i] == 1:
+                    last_swing_high = _high[i]
+                    last_swing_high_index = i
+
+                if _high_low[i] == -1:
+                    last_swing_low = _low[i]
+                    last_swing_low_index = i
+
+        else:
+            for i in range(shl_len):
+
+                # new structure completed on up side
+                if _high[i] >= last_swing_high:
+                    if trend == 1:
+                        bos[last_swing_high_index] = 1
+                        if use_bos:
+                            use_structure = True
+                    else:
+                        choch[last_swing_high_index] = 1
+                        trend = 1
+                        if use_choch:
+                            use_structure = True
+
+                    bos_level[last_swing_high_index] = last_swing_high
+                    structure_complete_date[last_swing_high_index] = _dates[i]
+
+                    if use_structure:
+                        ob[last_swing_low_index] = -1
+                        ob_confirm_date[last_swing_low_index] = _dates[i]
+
+                        ob_low_indices = np.concatenate(
+                            (
+                                ob_low_indices,
+                                np.array([[last_swing_low_index, last_swing_low]]),
+                            ),
+                            axis=0,
+                        )
+
+                    if last_swing_low > last_ob_low:
+                        last_ob_low = last_swing_low
+
+                    last_swing_high = very_high_no
+                    last_swing_high_index = very_low_no
+
+                # upper order block mitigated
+                if _high[i] >= last_ob_high:
+                    idx_to_delete = 0
+                    for row_idx, row in enumerate(ob_high_indices):
+                        ob_high_index, swing_high = row
+                        if last_ob_high == swing_high:
+                            idx_to_delete = row_idx
+                            ob_mitigation_date[int(ob_high_index)] = _dates[i]
+
+                    mask = np.ones(ob_high_indices.shape[0], dtype=bool)
+                    mask[idx_to_delete] = False
+                    ob_high_indices = ob_high_indices[mask]
+                    if np.any(ob_high_indices):
+                        last_ob_high = ob_high_indices[:, 1].min()
+                    else:
+                        last_ob_high = very_high_no
+
+                # new structure completed on down side
+                if _low[i] <= last_swing_low:
+
+                    if trend == -1:
+                        bos[last_swing_low_index] = -1
+                        if use_bos:
+                            use_structure = True
+                    else:
+                        choch[last_swing_low_index] = -1
+                        trend = -1
+                        if use_choch:
+                            use_structure = True
+
+                    bos_level[last_swing_low_index] = last_swing_low
+                    structure_complete_date[last_swing_low_index] = _dates[i]
+
+                    if use_structure:
+                        ob[last_swing_high_index] = 1
+                        ob_confirm_date[last_swing_high_index] = _dates[i]
+
+                        ob_high_indices = np.concatenate(
+                            (
+                                ob_high_indices,
+                                np.array([[last_swing_high_index, last_swing_high]]),
+                            ),
+                            axis=0,
+                        )
+
+                    if last_swing_high < last_ob_high:
+                        last_ob_high = last_swing_high
+
+                    last_swing_low = 0
+                    last_swing_low_index = 0
+
+                # lower order block mitigated
+                if _low[i] <= last_ob_low:
+
+                    idx_to_delete = 0
+                    for row_idx, row in enumerate(ob_low_indices):
+                        ob_low_index, swing_low = row
+                        if last_ob_low == swing_low:
+                            idx_to_delete = row_idx
+                            ob_mitigation_date[int(ob_low_index)] = _dates[i]
+
+                    mask = np.ones(ob_low_indices.shape[0], dtype=bool)
+                    mask[idx_to_delete] = False
+                    ob_low_indices = ob_low_indices[mask]
+
+                    if np.any(ob_low_indices):
+                        last_ob_low = ob_low_indices[:, 1].max()
+                    else:
+                        last_ob_low = very_low_no
+
+                if _high_low[i] == 1:
+                    last_swing_high = _high[i]
+                    last_swing_high_index = i
+
+                if _high_low[i] == -1:
+                    last_swing_low = _low[i]
+                    last_swing_low_index = i
+
+        # replace all the 0s with np.nan
+        bos = np.where(bos != 0, bos, np.nan)
+        choch = np.where(choch != 0, choch, np.nan)
+        bos_level = np.where(bos_level != 0, bos_level, np.nan)
         ob = np.where(ob != 0, ob, np.nan)
-        top = np.where(~np.isnan(ob), top, np.nan)
-        bottom = np.where(~np.isnan(ob), bottom, np.nan)
-        obVolume = np.where(~np.isnan(ob), obVolume, np.nan)
-        mitigated_index = np.where(~np.isnan(ob), mitigated_index, np.nan)
-        percentage = np.where(~np.isnan(ob), percentage, np.nan)
 
-        ob_series = pd.Series(ob, name="OB")
+        top = np.where(np.isnan(ob), np.nan, _high)
+        bottom = np.where(np.isnan(ob), np.nan, _low)
+
+        ob = pd.Series(ob, name="OB")
         top_series = pd.Series(top, name="Top")
         bottom_series = pd.Series(bottom, name="Bottom")
-        obVolume_series = pd.Series(obVolume, name="OBVolume")
-        mitigated_index_series = pd.Series(mitigated_index, name="MitigatedIndex")
-        percentage_series = pd.Series(percentage, name="Percentage")
+        ob_confirm_date = pd.Series(ob_confirm_date, name="ConfirmDate")
+        ob_mitigation_date = pd.Series(ob_mitigation_date, name="MitigationDate")
 
         return pd.concat(
             [
-                ob_series,
+                ob,
                 top_series,
                 bottom_series,
-                obVolume_series,
-                mitigated_index_series,
-                percentage_series,
+                ob_confirm_date,
+                ob_mitigation_date,
             ],
             axis=1,
         )
