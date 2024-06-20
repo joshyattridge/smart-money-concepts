@@ -350,7 +350,7 @@ class smc:
     @classmethod
     def bos_choch(
         cls, ohlc: DataFrame, swing_highs_lows: DataFrame, close_break: bool = True
-    ) -> Series:
+    ) -> DataFrame:
         """
         BOS - Break of Structure
         CHoCH - Change of Character
@@ -365,141 +365,137 @@ class smc:
         CHOCH = 1 if bullish change of character, -1 if bearish change of character
         Level = the level of the break of structure or change of character
         BrokenIndex = the index of the candle that broke the level
+        BrokenDate = the datetime of the candle that broke the level
         """
+        shl = swing_highs_lows.copy()
 
-        swing_highs_lows = swing_highs_lows.copy()
+        _high_low = shl["HighLow"].values
+        _dates = ohlc["date"].values.astype("datetime64[ns]")
+        _high = ohlc["high"].values
+        _low = ohlc["low"].values
+        _close = ohlc["close"].values
 
-        level_order = []
-        highs_lows_order = []
+        shl_len = len(_dates)
+        bos = np.zeros(shl_len, dtype=np.int16)
+        choch = np.zeros(shl_len, dtype=np.int16)
+        bos_level = np.zeros(shl_len, dtype=np.float64)
+        broken_index = np.zeros(shl_len, dtype=np.int64)
+        broken_date = np.full(shl_len, np.datetime64("NaT"), dtype="datetime64[ns]")
 
-        bos = np.zeros(len(ohlc), dtype=np.int32)
-        choch = np.zeros(len(ohlc), dtype=np.int32)
-        level = np.zeros(len(ohlc), dtype=np.float32)
+        very_high_no = 999999
+        very_low_no = -1
+        last_swing_high = very_high_no
+        last_swing_low = very_low_no
+        last_swing_high_index = 0
+        last_swing_low_index = 0
 
-        last_positions = []
+        trend = _high_low[np.flatnonzero(~np.isnan(_high_low))[0]]
 
-        for i in range(len(swing_highs_lows["HighLow"])):
-            if not np.isnan(swing_highs_lows["HighLow"][i]):
-                level_order.append(swing_highs_lows["Level"][i])
-                highs_lows_order.append(swing_highs_lows["HighLow"][i])
-                if len(level_order) >= 4:
-                    # bullish bos
-                    bos[last_positions[-2]] = (
-                        1
-                        if (
-                            np.all(highs_lows_order[-4:] == [-1, 1, -1, 1])
-                            and np.all(
-                                level_order[-4]
-                                < level_order[-2]
-                                < level_order[-3]
-                                < level_order[-1]
-                            )
-                        )
-                        else 0
-                    )
-                    level[last_positions[-2]] = (
-                        level_order[-3] if bos[last_positions[-2]] != 0 else 0
-                    )
+        if close_break:
+            for i in range(shl_len):
 
-                    # bearish bos
-                    bos[last_positions[-2]] = (
-                        -1
-                        if (
-                            np.all(highs_lows_order[-4:] == [1, -1, 1, -1])
-                            and np.all(
-                                level_order[-4]
-                                > level_order[-2]
-                                > level_order[-3]
-                                > level_order[-1]
-                            )
-                        )
-                        else bos[last_positions[-2]]
-                    )
-                    level[last_positions[-2]] = (
-                        level_order[-3] if bos[last_positions[-2]] != 0 else 0
-                    )
+                # new structure completed on up side
+                if _close[i] >= last_swing_high:
+                    if trend == 1:
+                        bos[last_swing_high_index] = 1
+                    else:
+                        choch[last_swing_high_index] = 1
+                        trend = 1
 
-                    # bullish choch
-                    choch[last_positions[-2]] = (
-                        1
-                        if (
-                            np.all(highs_lows_order[-4:] == [-1, 1, -1, 1])
-                            and np.all(
-                                level_order[-1]
-                                > level_order[-3]
-                                > level_order[-4]
-                                > level_order[-2]
-                            )
-                        )
-                        else 0
-                    )
-                    level[last_positions[-2]] = (
-                        level_order[-3]
-                        if choch[last_positions[-2]] != 0
-                        else level[last_positions[-2]]
-                    )
+                    bos_level[last_swing_high_index] = last_swing_high
+                    broken_date[last_swing_high_index] = _dates[i]
+                    broken_index[last_swing_high_index] = i
 
-                    # bearish choch
-                    choch[last_positions[-2]] = (
-                        -1
-                        if (
-                            np.all(highs_lows_order[-4:] == [1, -1, 1, -1])
-                            and np.all(
-                                level_order[-1]
-                                < level_order[-3]
-                                < level_order[-4]
-                                < level_order[-2]
-                            )
-                        )
-                        else choch[last_positions[-2]]
-                    )
-                    level[last_positions[-2]] = (
-                        level_order[-3]
-                        if choch[last_positions[-2]] != 0
-                        else level[last_positions[-2]]
-                    )
+                    last_swing_high = very_high_no
+                    last_swing_high_index = very_low_no
 
-                last_positions.append(i)
+                # new structure completed on down side
+                if _close[i] <= last_swing_low:
+                    if trend == -1:
+                        bos[last_swing_low_index] = -1
+                    else:
+                        choch[last_swing_low_index] = -1
+                        trend = -1
 
-        broken = np.zeros(len(ohlc), dtype=np.int32)
-        for i in np.where(np.logical_or(bos != 0, choch != 0))[0]:
-            mask = np.zeros(len(ohlc), dtype=np.bool_)
-            # if the bos is 1 then check if the candles high has gone above the level
-            if bos[i] == 1 or choch[i] == 1:
-                mask = ohlc["close" if close_break else "high"][i + 2 :] > level[i]
-            # if the bos is -1 then check if the candles low has gone below the level
-            elif bos[i] == -1 or choch[i] == -1:
-                mask = ohlc["close" if close_break else "low"][i + 2 :] < level[i]
-            if np.any(mask):
-                j = np.argmax(mask) + i + 2
-                broken[i] = j
-                # if there are any unbroken bos or choch that started before this one and ended after this one then remove them
-                for k in np.where(np.logical_or(bos != 0, choch != 0))[0]:
-                    if k < i and broken[k] >= j:
-                        bos[k] = 0
-                        choch[k] = 0
-                        level[k] = 0
+                    bos_level[last_swing_low_index] = last_swing_low
+                    broken_date[last_swing_low_index] = _dates[i]
+                    broken_index[last_swing_low_index] = i
 
-        # remove the ones that aren't broken
-        for i in np.where(
-            np.logical_and(np.logical_or(bos != 0, choch != 0), broken == 0)
-        )[0]:
-            bos[i] = 0
-            choch[i] = 0
-            level[i] = 0
+                    last_swing_low = 0
+                    last_swing_low_index = 0
+
+                if _high_low[i] == 1:
+                    last_swing_high = _high[i]
+                    last_swing_high_index = i
+
+                if _high_low[i] == -1:
+                    last_swing_low = _low[i]
+                    last_swing_low_index = i
+
+        else:
+            for i in range(shl_len):
+
+                # new structure completed on up side
+                if _high[i] >= last_swing_high:
+                    if trend == 1:
+                        bos[last_swing_high_index] = 1
+                    else:
+                        choch[last_swing_high_index] = 1
+                        trend = 1
+
+                    bos_level[last_swing_high_index] = last_swing_high
+                    broken_date[last_swing_high_index] = _dates[i]
+                    broken_index[i] = i
+
+                    last_swing_high = very_high_no
+                    last_swing_high_index = very_low_no
+
+                # new structure completed on down side
+                if _low[i] <= last_swing_low:
+
+                    if trend == -1:
+                        bos[last_swing_low_index] = -1
+                    else:
+                        choch[last_swing_low_index] = -1
+                        trend = -1
+
+                    bos_level[last_swing_low_index] = last_swing_low
+                    broken_date[last_swing_low_index] = _dates[i]
+                    broken_index[i] = i
+
+                    last_swing_low = 0
+                    last_swing_low_index = 0
+
+                if _high_low[i] == 1:
+                    last_swing_high = _high[i]
+                    last_swing_high_index = i
+
+                if _high_low[i] == -1:
+                    last_swing_low = _low[i]
+                    last_swing_low_index = i
 
         # replace all the 0s with np.nan
         bos = np.where(bos != 0, bos, np.nan)
         choch = np.where(choch != 0, choch, np.nan)
-        level = np.where(level != 0, level, np.nan)
-        broken = np.where(broken != 0, broken, np.nan)
+        bos_level = np.where(bos_level != 0, bos_level, np.nan)
+        broken_index = np.where(broken_index != 0, bos_level, np.nan)
 
         bos = pd.Series(bos, name="BOS")
         choch = pd.Series(choch, name="CHOCH")
-        level = pd.Series(level, name="Level")
-        broken = pd.Series(broken, name="BrokenIndex")
+        bos_level = pd.Series(bos_level, name="Level")
+        broken_index = pd.Series(broken_index, name="BrokenIndex")
+        broken_date = pd.Series(broken_date, name="BrokenDate")
 
-        return pd.concat([bos, choch, level, broken], axis=1)
+        return pd.concat(
+            [
+                bos,
+                choch,
+                bos_level,
+                broken_index,
+                broken_date,
+            ],
+            axis=1,
+        )
 
     @classmethod
     def ob(
