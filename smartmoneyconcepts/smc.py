@@ -521,8 +521,11 @@ class smc:
         This method detects order blocks when there is a high amount of market orders exist on a price range.
 
         parameters:
-        swing_highs_lows: DataFrame - provide the dataframe from the swing_highs_lows function
+        ohlc: DataFrame - provide the ohlc data that which is used for calculating the shl
+        shl: DataFrame - provide the dataframe from the swing_highs_lows function
         close_mitigation: bool - if True then the order block will be mitigated based on the close of the candle otherwise it will be the high/low.
+        use_bos: bool - if break of structure are to be used to calculate order blocks.
+        use_choch: bool - if change of character are to be used to calculate order blocks.
 
         returns:
         OB = 1 if bullish order block, -1 if bearish order block
@@ -542,7 +545,6 @@ class smc:
             ohlc.reset_index(inplace=True)
             if rename_col is not None:
                 ohlc.rename(columns={rename_col:'date'}, inplace=True)
-
 
         _high_low = shl["HighLow"].values
         _dates = ohlc["date"].values.astype("datetime64[ns]")
@@ -598,11 +600,11 @@ class smc:
                             use_structure = True
 
                     bos_level[last_swing_high_index] = last_swing_high
-                    structure_complete_date[last_swing_high_index] = _dates[i]
+                    structure_complete_date[last_swing_high_index] = _dates[i + 1]
 
                     if use_structure:
                         ob[last_swing_low_index] = -1
-                        ob_confirm_date[last_swing_low_index] = _dates[i]
+                        ob_confirm_date[last_swing_low_index] = _dates[i + 1]
                         ob_low_indices = np.concatenate(
                             (
                                 ob_low_indices,
@@ -619,18 +621,17 @@ class smc:
 
                 # upper order block mitigated
                 if _close[i] >= last_ob_high:
-                    idx_to_delete = None
+                    idx_to_delete = []
                     for row_idx, row in enumerate(ob_high_indices):
                         ob_high_index, swing_high = row
-                        if last_ob_high == swing_high:
-                            idx_to_delete = row_idx
+                        if _close[i] >= swing_high:
+                            idx_to_delete.append(row_idx)
                             ob_mitigation_date[int(ob_high_index)] = _dates[i]
                             ob_mitigated_index[int(ob_high_index)] = i
 
                     mask = np.ones(ob_high_indices.shape[0], dtype=bool)
-                    if idx_to_delete is not None:
-                        mask[idx_to_delete] = False
-                        ob_high_indices = ob_high_indices[mask]
+                    mask[idx_to_delete] = False
+                    ob_high_indices = ob_high_indices[mask]
                     if np.any(ob_high_indices):
                         last_ob_high = ob_high_indices[:, 1].min()
                     else:
@@ -649,11 +650,11 @@ class smc:
                             use_structure = True
 
                     bos_level[last_swing_low_index] = last_swing_low
-                    structure_complete_date[last_swing_low_index] = _dates[i]
+                    structure_complete_date[last_swing_low_index] = _dates[i + 1]
 
                     if use_structure:
                         ob[last_swing_high_index] = 1
-                        ob_confirm_date[last_swing_high_index] = _dates[i]
+                        ob_confirm_date[last_swing_high_index] = _dates[i + 1]
 
                         ob_high_indices = np.concatenate(
                             (
@@ -671,19 +672,17 @@ class smc:
 
                 # lower order block mitigated
                 if _close[i] <= last_ob_low:
-
-                    idx_to_delete = None
+                    idx_to_delete = []
                     for row_idx, row in enumerate(ob_low_indices):
                         ob_low_index, swing_low = row
-                        if last_ob_low == swing_low:
-                            idx_to_delete = row_idx
+                        if _close[i] <= swing_low:
+                            idx_to_delete.append(row_idx)
                             ob_mitigation_date[int(ob_low_index)] = _dates[i]
                             ob_mitigated_index[int(ob_low_index)] = i
 
                     mask = np.ones(ob_low_indices.shape[0], dtype=bool)
-                    if idx_to_delete is not None:
-                        mask[idx_to_delete] = False
-                        ob_low_indices = ob_low_indices[mask]
+                    mask[idx_to_delete] = False
+                    ob_low_indices = ob_low_indices[mask]
 
                     if np.any(ob_low_indices):
                         last_ob_low = ob_low_indices[:, 1].max()
@@ -714,11 +713,11 @@ class smc:
                             use_structure = True
 
                     bos_level[last_swing_high_index] = last_swing_high
-                    structure_complete_date[last_swing_high_index] = _dates[i]
+                    structure_complete_date[last_swing_high_index] = _dates[i + 1]
 
                     if use_structure:
                         ob[last_swing_low_index] = -1
-                        ob_confirm_date[last_swing_low_index] = _dates[i]
+                        ob_confirm_date[last_swing_low_index] = _dates[i + 1]
 
                         ob_low_indices = np.concatenate(
                             (
@@ -736,11 +735,11 @@ class smc:
 
                 # upper order block mitigated
                 if _high[i] >= last_ob_high:
-                    idx_to_delete = 0
+                    idx_to_delete = []
                     for row_idx, row in enumerate(ob_high_indices):
                         ob_high_index, swing_high = row
-                        if last_ob_high == swing_high:
-                            idx_to_delete = row_idx
+                        if _high[i] >= swing_high:
+                            idx_to_delete.append(row_idx)
                             ob_mitigation_date[int(ob_high_index)] = _dates[i]
 
                     mask = np.ones(ob_high_indices.shape[0], dtype=bool)
@@ -765,11 +764,11 @@ class smc:
                             use_structure = True
 
                     bos_level[last_swing_low_index] = last_swing_low
-                    structure_complete_date[last_swing_low_index] = _dates[i]
+                    structure_complete_date[last_swing_low_index] = _dates[i + 1]
 
                     if use_structure:
                         ob[last_swing_high_index] = 1
-                        ob_confirm_date[last_swing_high_index] = _dates[i]
+                        ob_confirm_date[last_swing_high_index] = _dates[i + 1]
 
                         ob_high_indices = np.concatenate(
                             (
@@ -788,11 +787,11 @@ class smc:
                 # lower order block mitigated
                 if _low[i] <= last_ob_low:
 
-                    idx_to_delete = 0
+                    idx_to_delete = []
                     for row_idx, row in enumerate(ob_low_indices):
                         ob_low_index, swing_low = row
-                        if last_ob_low == swing_low:
-                            idx_to_delete = row_idx
+                        if _low[i] <= swing_low:
+                            idx_to_delete.append(row_idx)
                             ob_mitigation_date[int(ob_low_index)] = _dates[i]
 
                     mask = np.ones(ob_low_indices.shape[0], dtype=bool)
