@@ -1,9 +1,11 @@
+from enum import Enum
 from functools import wraps
 import pandas as pd
 import numpy as np
 from pandas import DataFrame, Series
 from datetime import datetime
 
+# Docs: https://github.com/joshyattridge/smart-money-concepts/blob/master/README.md
 def inputvalidator(input_="ohlc"):
     def dfcheck(func):
         @wraps(func)
@@ -71,11 +73,11 @@ class smc:
 
         fvg = np.where(
             (
-                (ohlc["high"].shift(1) < ohlc["low"].shift(-1))
+                (ohlc["high"].shift(2) < ohlc["low"])
                 & (ohlc["close"] > ohlc["open"])
             )
             | (
-                (ohlc["low"].shift(1) > ohlc["high"].shift(-1))
+                (ohlc["low"].shift(2) > ohlc["high"])
                 & (ohlc["close"] < ohlc["open"])
             ),
             np.where(ohlc["close"] > ohlc["open"], 1, -1),
@@ -86,8 +88,8 @@ class smc:
             ~np.isnan(fvg),
             np.where(
                 ohlc["close"] > ohlc["open"],
-                ohlc["low"].shift(-1),
-                ohlc["low"].shift(1),
+                ohlc["low"],
+                ohlc["low"].shift(2),
             ),
             np.nan,
         )
@@ -96,8 +98,8 @@ class smc:
             ~np.isnan(fvg),
             np.where(
                 ohlc["close"] > ohlc["open"],
-                ohlc["high"].shift(1),
-                ohlc["high"].shift(-1),
+                ohlc["high"].shift(2),
+                ohlc["high"],
             ),
             np.nan,
         )
@@ -120,11 +122,8 @@ class smc:
             if np.any(mask):
                 j = np.argmax(mask) + i + 2
                 mitigated_index[i] = j
-
         mitigated_index = np.where(np.isnan(fvg), np.nan, mitigated_index)
-
-        return pd.concat(
-            [
+        return pd.concat(            [
                 pd.Series(fvg, name="FVG"),
                 pd.Series(top, name="Top"),
                 pd.Series(bottom, name="Bottom"),
@@ -133,90 +132,236 @@ class smc:
             axis=1,
         )
 
+  
+    class SwingMethodEvaluator(Enum):
+        COMBINED = "combined"
+        FRACTALS = "fractals"
+        MOMENTUM = "momentum"
+        WEIGHTED_ROLLING_WINDOW = "weighted_rolling_window"
+        
     @classmethod
-    def swing_highs_lows(cls, ohlc: DataFrame, swing_length: int = 50) -> Series:
+    def swing_highs_lows(cls, ohlc: DataFrame, swing_evaluator: SwingMethodEvaluator = "default",
+                         swing_length: int = 50, short_swing_length: int = 10, long_swing_length=50) -> Series:
         """
-        Swing Highs and Lows
-        A swing high is when the current high is the highest high out of the swing_length amount of candles before and after.
-        A swing low is when the current low is the lowest low out of the swing_length amount of candles before and after.
+        Swing Highs and Lows without lookahead bias.
+
+        A swing high is when the current high is the highest high out of 
+        the last `swing_length` candles (including itself).
+        A swing low is when the current low is the lowest low out of 
+        the last `swing_length` candles (including itself).
 
         parameters:
-        swing_length: int - the amount of candles to look back and forward to determine the swing high or low
+        swing_length: int - Number of candles to look back to determine swings.
+        short_swing_length: int - Number of candles for short-term swings.
+        long_swing_length: int - Number of candles for long-term swings.
 
         returns:
         HighLow = 1 if swing high, -1 if swing low
         Level = the level of the swing high or low
         """
+        
+        def fractals():
+            """
+            Identifies swing highs/lows based on a smaller subset of candles rather than a fixed-length rolling window.
+            
+            How it helps: Fractals use fewer candles (e.g., just the previous two and the next two), which reduces lag.
 
-        swing_length *= 2
-        # set the highs to 1 if the current high is the highest high in the last 5 candles and next 5 candles
-        swing_highs_lows = np.where(
-            ohlc["high"]
-            == ohlc["high"].shift(-(swing_length // 2)).rolling(swing_length).max(),
-            1,
-            np.where(
-                ohlc["low"]
-                == ohlc["low"].shift(-(swing_length // 2)).rolling(swing_length).min(),
+            Trade-off: Less robust for noisy markets.
+            """
+            swing_highs = np.where(
+                (ohlc["high"] > ohlc["high"].shift(1)) & 
+                (ohlc["high"] > ohlc["high"].shift(2)) & 
+                (ohlc["high"] > ohlc["high"].shift(-1)) & 
+                (ohlc["high"] > ohlc["high"].shift(-2)),
+                1,
+                np.nan,
+            )
+            swing_lows = np.where(
+                (ohlc["low"] < ohlc["low"].shift(1)) & 
+                (ohlc["low"] < ohlc["low"].shift(2)) & 
+                (ohlc["low"] < ohlc["low"].shift(-1)) & 
+                (ohlc["low"] < ohlc["low"].shift(-2)),
                 -1,
                 np.nan,
-            ),
-        )
+            )
+            # Combine swing highs and lows
+            swing_highs_lows = np.nan_to_num(swing_highs) + np.nan_to_num(swing_lows)
 
-        while True:
-            positions = np.where(~np.isnan(swing_highs_lows))[0]
+            # Determine swing levels
+            level = np.where(
+                swing_highs_lows == 1,
+                ohlc["high"],  # Level for swing highs
+                np.where(swing_highs_lows == -1, ohlc["low"], np.nan),  # Level for swing lows
+            )
+            return swing_highs_lows, level
 
-            if len(positions) < 2:
-                break
+        
+        def momentum():
+            """
+            Use momentum (e.g., rate of change or RSI) to confirm swing points earlier by identifying
+            trends or overbought/oversold conditions.
+            
+            How it helps: This can confirm swing points without waiting for the full swing_length.
+            """
 
-            current = swing_highs_lows[positions[:-1]]
-            next = swing_highs_lows[positions[1:]]
+            ohlc["momentum"] = ohlc["close"].diff(swing_length)
+            swing_highs = np.where(
+                (ohlc["high"] == ohlc["high"].rolling(window=swing_length).max()) &
+                (ohlc["momentum"] > 0),
+                1,
+                np.nan,
+            )
+            swing_lows = np.where(
+                (ohlc["low"] == ohlc["low"].rolling(window=swing_length).min()) &
+                (ohlc["momentum"] < 0),
+                -1,
+                np.nan,
+            )
+            # Combine swing highs and lows
+            swing_highs_lows = np.nan_to_num(swing_highs) + np.nan_to_num(swing_lows)
 
-            highs = ohlc["high"].iloc[positions[:-1]].values
-            lows = ohlc["low"].iloc[positions[:-1]].values
+            # Determine swing levels
+            level = np.where(
+                swing_highs_lows == 1,
+                ohlc["high"],  # Level for swing highs
+                np.where(swing_highs_lows == -1, ohlc["low"], np.nan),  # Level for swing lows
+            )
+            return swing_highs_lows, level
 
-            next_highs = ohlc["high"].iloc[positions[1:]].values
-            next_lows = ohlc["low"].iloc[positions[1:]].values
 
-            index_to_remove = np.zeros(len(positions), dtype=bool)
+        def weighted_rolling_window():
+            """
+            Instead of treating all candles equally in the rolling window, give more weight to recent candles.
 
-            consecutive_highs = (current == 1) & (next == 1)
-            index_to_remove[:-1] |= consecutive_highs & (highs < next_highs)
-            index_to_remove[1:] |= consecutive_highs & (highs >= next_highs)
+            How it helps: This makes the indicator react faster to recent price movements.
 
-            consecutive_lows = (current == -1) & (next == -1)
-            index_to_remove[:-1] |= consecutive_lows & (lows > next_lows)
-            index_to_remove[1:] |= consecutive_lows & (lows <= next_lows)
+            Trade-off: Swings may not strictly align with traditional high/low definitions.
+            """
 
-            if not index_to_remove.any():
-                break
+            ohlc["high_ema"] = ohlc["high"].ewm(span=swing_length).mean()
+            ohlc["low_ema"] = ohlc["low"].ewm(span=swing_length).mean()
 
-            swing_highs_lows[positions[index_to_remove]] = np.nan
+            swing_highs = np.where(ohlc["high"] >= ohlc["high_ema"], 1, np.nan)
+            swing_lows = np.where(ohlc["low"] <= ohlc["low_ema"], -1, np.nan)
+            # Combine swing highs and lows
+            swing_highs_lows = np.nan_to_num(swing_highs) + np.nan_to_num(swing_lows)
 
-        positions = np.where(~np.isnan(swing_highs_lows))[0]
+            # Determine swing levels
+            level = np.where(
+                swing_highs_lows == 1,
+                ohlc["high"],  # Level for swing highs
+                np.where(swing_highs_lows == -1, ohlc["low"], np.nan),  # Level for swing lows
+            )
+            return swing_highs_lows, level
 
-        if len(positions) > 0:
-            if swing_highs_lows[positions[0]] == 1:
-                swing_highs_lows[0] = -1
-            if swing_highs_lows[positions[0]] == -1:
-                swing_highs_lows[0] = 1
-            if swing_highs_lows[positions[-1]] == -1:
-                swing_highs_lows[-1] = 1
-            if swing_highs_lows[positions[-1]] == 1:
-                swing_highs_lows[-1] = -1
 
-        level = np.where(
-            ~np.isnan(swing_highs_lows),
-            np.where(swing_highs_lows == 1, ohlc["high"], ohlc["low"]),
-            np.nan,
-        )
+        def combined():
+            """
+            Combine Short and Long Swing Lengths for Swing Highs and Lows.
 
-        return pd.concat(
-            [
-                pd.Series(swing_highs_lows, name="HighLow"),
-                pd.Series(level, name="Level"),
-            ],
-            axis=1,
-        )
+            Parameters:
+            ohlc: DataFrame - Contains columns 'high' and 'low'.
+            short_swing_length: int - Number of candles for short-term swings.
+            long_swing_length: int - Number of candles for long-term swings.
+
+            Returns:
+            DataFrame with columns:
+            - HighLow: 1 for short-term swing high, -1 for short-term swing low,
+                    2 for long-term swing high, -2 for long-term swing low,
+                    NaN otherwise.
+            - Level: Swing high or low price level.
+            """
+
+            # Short-term swing highs and lows
+            short_highs = ohlc["high"].rolling(window=short_swing_length, min_periods=1).max()
+            short_lows = ohlc["low"].rolling(window=short_swing_length, min_periods=1).min()
+
+            short_swing_highs = np.where(ohlc["high"] == short_highs, 1, np.nan)
+            short_swing_lows = np.where(ohlc["low"] == short_lows, -1, np.nan)
+
+            # Long-term swing highs and lows
+            long_highs = ohlc["high"].rolling(window=long_swing_length, min_periods=1).max()
+            long_lows = ohlc["low"].rolling(window=long_swing_length, min_periods=1).min()
+
+            long_swing_highs = np.where(ohlc["high"] == long_highs, 2, np.nan)
+            long_swing_lows = np.where(ohlc["low"] == long_lows, -2, np.nan)
+
+            # Combine short-term and long-term swings
+            swing_highs_lows = (
+                np.nan_to_num(short_swing_highs) +
+                np.nan_to_num(short_swing_lows) +
+                np.nan_to_num(long_swing_highs) +
+                np.nan_to_num(long_swing_lows)
+            )
+
+            # Determine swing levels
+            level = np.where(
+                swing_highs_lows == 1, ohlc["high"],  # Short-term high
+                np.where(
+                    swing_highs_lows == -1, ohlc["low"],  # Short-term low
+                    np.where(
+                        swing_highs_lows == 2, ohlc["high"],  # Long-term high
+                        np.where(swing_highs_lows == -2, ohlc["low"], np.nan)  # Long-term low
+                    )
+                )
+            )
+            return swing_highs_lows, level
+        
+        def default():
+            """
+            Swing Highs and Lows without lookahead bias.
+
+            A swing high is when the current high is the highest high out of 
+            the last `swing_length` candles (including itself).
+            A swing low is when the current low is the lowest low out of 
+            the last `swing_length` candles (including itself).
+            """
+
+            # Calculate swing highs
+            swing_highs = np.where(
+                ohlc["high"] == ohlc["high"].rolling(window=swing_length, min_periods=1).max(),
+                1,
+                np.nan,
+            )
+
+            # Calculate swing lows
+            swing_lows = np.where(
+                ohlc["low"] == ohlc["low"].rolling(window=swing_length, min_periods=1).min(),
+                -1,
+                np.nan,
+            )
+
+            # Combine swing highs and lows
+            swing_highs_lows = np.nan_to_num(swing_highs) + np.nan_to_num(swing_lows)
+
+            # Determine swing levels
+            level = np.where(
+                swing_highs_lows == 1,
+                ohlc["high"],  # Level for swing highs
+                np.where(swing_highs_lows == -1, ohlc["low"], np.nan),  # Level for swing lows
+            )
+            return swing_highs_lows, level
+        
+        match swing_evaluator:
+            case "momentum":
+                swing_highs_lows, level = momentum()
+            case "weighted_rolling_window":
+                swing_highs_lows, level = weighted_rolling_window()
+            case "fractals":
+                swing_highs_lows, level = fractals()
+            case "combined":
+                swing_highs_lows, level = combined()
+            case "default":
+                swing_highs_lows, level = default()
+            case _:
+                swing_highs_lows, level = default()
+                
+            
+        # Return results as a DataFrame
+        return pd.DataFrame({
+            "HighLow": swing_highs_lows,
+            "Level": level,
+        })
 
     @classmethod
     def bos_choch(
