@@ -138,10 +138,11 @@ class smc:
         FRACTALS = "fractals"
         MOMENTUM = "momentum"
         WEIGHTED_ROLLING_WINDOW = "weighted_rolling_window"
+        DEFAULT = "default"
         
     @classmethod
-    def swing_highs_lows(cls, ohlc: DataFrame, swing_evaluator: SwingMethodEvaluator = "default",
-                         swing_length: int = 50, short_swing_length: int = 10, long_swing_length=50) -> Series:
+    def swing_highs_lows(cls, ohlc: DataFrame, swing_evaluator: SwingMethodEvaluator = SwingMethodEvaluator.DEFAULT,
+                         swing_length: int = 5, short_swing_length: int = 10, long_swing_length=50) -> Series:
         """
         Swing Highs and Lows without lookahead bias.
 
@@ -342,7 +343,7 @@ class smc:
             )
             return swing_highs_lows, level
         
-        match swing_evaluator:
+        match swing_evaluator.value:
             case "momentum":
                 swing_highs_lows, level = momentum()
             case "weighted_rolling_window":
