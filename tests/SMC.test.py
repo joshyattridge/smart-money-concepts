@@ -9,6 +9,7 @@ import time
 import imageio
 from io import BytesIO
 from PIL import Image
+from tqdm import tqdm
 
 sys.path.append(os.path.abspath("../"))
 from smartmoneyconcepts.smc import smc
@@ -441,7 +442,7 @@ df = import_data("BTCUSDT", "2024-04-01", "15m")
 df = df.iloc[-500:]
 
 def fig_to_buffer(fig):
-    fig_bytes = fig.to_image(format="png")
+    fig_bytes = fig.to_image(format="png", scale=5)
     fig_buffer = BytesIO(fig_bytes)
     fig_image = Image.open(fig_buffer)
     return np.array(fig_image)
@@ -450,7 +451,7 @@ def fig_to_buffer(fig):
 gif = []
 
 window = 100
-for pos in range(window, len(df)):
+for pos in tqdm(range(window, len(df))):
     window_df = df.iloc[pos - window : pos]
 
     fig = go.Figure(
