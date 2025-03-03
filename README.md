@@ -184,6 +184,8 @@ This project is still in BETA so please feel free to contribute to the project. 
 5. Push to the branch (git push origin my-new-feature).
 6. Create a new Pull Request.
 
+Less is more – each pull request should be minimal, focusing on a single function or a small feature. Large, sweeping changes will not be merged, as they are harder to review and maintain. Keep it simple and focused!
+
 ## Disclaimer
 
 This project is for educational purposes only. Do not use this indicator as a sole decision maker for your trades. Always use proper risk management and do your own research before making any trades. The author of this project is not responsible for any losses you may incur.
