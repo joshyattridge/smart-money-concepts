@@ -392,189 +392,161 @@ class smc:
         Top = top of the order block
         Bottom = bottom of the order block
         OBVolume = volume + 2 last volumes amounts
-        Percentage = strength of order block (min(highVolume, lowVolume)/max(highVolume,lowVolume))
+        Percentage = strength of order block (min(highVolume, lowVolume)/max(highVolume, lowVolume))
         """
-        swing_highs_lows = swing_highs_lows.copy()
-        ohlc_len = len(ohlc)
 
+        ohlc_len = len(ohlc)
         _open = ohlc["open"].values
         _high = ohlc["high"].values
         _low = ohlc["low"].values
         _close = ohlc["close"].values
         _volume = ohlc["volume"].values
-        _swing_high_low = swing_highs_lows["HighLow"].values
+        swing_hl = swing_highs_lows["HighLow"].values
 
-        crossed = np.full(len(ohlc), False, dtype=bool)
-        ob = np.zeros(len(ohlc), dtype=np.int32)
-        top = np.zeros(len(ohlc), dtype=np.float32)
-        bottom = np.zeros(len(ohlc), dtype=np.float32)
-        obVolume = np.zeros(len(ohlc), dtype=np.float32)
-        lowVolume = np.zeros(len(ohlc), dtype=np.float32)
-        highVolume = np.zeros(len(ohlc), dtype=np.float32)
-        percentage = np.zeros(len(ohlc), dtype=np.int32)
-        mitigated_index = np.zeros(len(ohlc), dtype=np.int32)
-        breaker = np.full(len(ohlc), False, dtype=bool)
+        # Pre-allocate arrays
+        crossed = np.full(ohlc_len, False, dtype=bool)
+        ob = np.zeros(ohlc_len, dtype=np.int32)
+        top_arr = np.zeros(ohlc_len, dtype=np.float32)
+        bottom_arr = np.zeros(ohlc_len, dtype=np.float32)
+        obVolume = np.zeros(ohlc_len, dtype=np.float32)
+        lowVolume = np.zeros(ohlc_len, dtype=np.float32)
+        highVolume = np.zeros(ohlc_len, dtype=np.float32)
+        percentage = np.zeros(ohlc_len, dtype=np.float32)
+        mitigated_index = np.zeros(ohlc_len, dtype=np.int32)
+        breaker = np.full(ohlc_len, False, dtype=bool)
 
+        # Precompute swing indices (assumed sorted)
+        swing_high_indices = np.flatnonzero(swing_hl == 1)
+        swing_low_indices = np.flatnonzero(swing_hl == -1)
+
+        # List to track active bullish order blocks
+        active_bullish = []
         for i in range(ohlc_len):
             close_index = i
+            # Update existing bullish OB
+            for idx in active_bullish.copy():
+                if breaker[idx]:
+                    if _high[close_index] > top_arr[idx]:
+                        # Reset this OB
+                        ob[idx] = 0
+                        top_arr[idx] = 0.0
+                        bottom_arr[idx] = 0.0
+                        obVolume[idx] = 0.0
+                        lowVolume[idx] = 0.0
+                        highVolume[idx] = 0.0
+                        mitigated_index[idx] = 0
+                        percentage[idx] = 0.0
+                        active_bullish.remove(idx)
+                else:
+                    if ((not close_mitigation and _low[close_index] < bottom_arr[idx])
+                        or (close_mitigation and min(_open[close_index], _close[close_index]) < bottom_arr[idx])):
+                        breaker[idx] = True
+                        mitigated_index[idx] = close_index - 1
 
-            # Bullish Order Block
-            if len(ob[ob == 1]) > 0:
-                for j in range(len(ob) - 1, -1, -1):
-                    if ob[j] == 1:
-                        currentOB = j
-                        if breaker[currentOB]:
-                            if _high[close_index] > top[currentOB]:
-                                ob[j] = top[j] = bottom[j] = obVolume[j] = lowVolume[j] = (
-                                    highVolume[j]
-                                ) = mitigated_index[j] = percentage[j] = 0.0
-
-                        elif (
-                            not close_mitigation and _low[close_index] < bottom[currentOB]
-                        ) or (
-                            close_mitigation
-                            and min(
-                                _open[close_index],
-                                _close[close_index],
-                            )
-                            < bottom[currentOB]
-                        ):
-                            breaker[currentOB] = True
-                            mitigated_index[currentOB] = close_index - 1
-
-            last_top_indices = np.where(
-                (_swing_high_low == 1)
-                & (np.arange(len(swing_highs_lows["HighLow"])) < close_index)
-            )[0]
-
-            if last_top_indices.size > 0:
-                last_top_index = np.max(last_top_indices)
-            else:
-                last_top_index = None
+            # Find last swing high index less than current candle (using binary search)
+            pos = np.searchsorted(swing_high_indices, close_index)
+            last_top_index = swing_high_indices[pos - 1] if pos > 0 else None
 
             if last_top_index is not None:
-
-                swing_top_price = _high[last_top_index]
-                if _close[close_index] > swing_top_price and not crossed[last_top_index]:
+                if _close[close_index] > _high[last_top_index] and not crossed[last_top_index]:
                     crossed[last_top_index] = True
-                    obBtm = _high[close_index - 1]
-                    obTop = _low[close_index - 1]
-                    obIndex = close_index - 1
-                    for j in range(1, close_index - last_top_index):
-                        obBtm = min(
-                            _low[last_top_index + j],
-                            obBtm,
-                        )
-                        if obBtm == _low[last_top_index + j]:
-                            obTop = _high[last_top_index + j]
-                        obIndex = (
-                            last_top_index + j
-                            if obBtm == _low[last_top_index + j]
-                            else obIndex
-                        )
-
+                    # Initialise with default values from previous candle
+                    default_index = close_index - 1
+                    obBtm = _high[default_index]
+                    obTop = _low[default_index]
+                    obIndex = default_index
+                    # Look for a lower low between last_top_index and current candle
+                    if close_index - last_top_index > 1:
+                        start = last_top_index + 1
+                        end = close_index  # up to but not including close_index
+                        if end > start:
+                            segment = _low[start:end]
+                            min_val = segment.min()
+                            # In case of ties, take the last occurrence
+                            candidates = np.nonzero(segment == min_val)[0]
+                            if candidates.size:
+                                candidate_index = start + candidates[-1]
+                                obBtm = _low[candidate_index]
+                                obTop = _high[candidate_index]
+                                obIndex = candidate_index
+                    # Set bullish OB values
                     ob[obIndex] = 1
-                    top[obIndex] = obTop
-                    bottom[obIndex] = obBtm
-                    obVolume[obIndex] = (
-                        _volume[close_index]
-                        + _volume[close_index - 1]
-                        + _volume[close_index - 2]
-                    )
+                    top_arr[obIndex] = obTop
+                    bottom_arr[obIndex] = obBtm
+                    obVolume[obIndex] = _volume[close_index] + _volume[close_index - 1] + _volume[close_index - 2]
                     lowVolume[obIndex] = _volume[close_index - 2]
                     highVolume[obIndex] = _volume[close_index] + _volume[close_index - 1]
-                    percentage[obIndex] = (
-                        np.min([highVolume[obIndex], lowVolume[obIndex]], axis=0)
-                        / np.max([highVolume[obIndex], lowVolume[obIndex]], axis=0)
-                        if np.max([highVolume[obIndex], lowVolume[obIndex]], axis=0) != 0
-                        else 1
-                    ) * 100.0
+                    max_vol = max(highVolume[obIndex], lowVolume[obIndex])
+                    percentage[obIndex] = (min(highVolume[obIndex], lowVolume[obIndex]) / max_vol * 100.0) if max_vol != 0 else 100.0
+                    active_bullish.append(obIndex)
 
-        for i in range(len(ohlc)):
+        # List to track active bearish order blocks
+        active_bearish = []
+        for i in range(ohlc_len):
             close_index = i
-            close_price = _close[close_index]
+            # Update existing bearish OB
+            for idx in active_bearish.copy():
+                if breaker[idx]:
+                    if _low[close_index] < bottom_arr[idx]:
+                        ob[idx] = 0
+                        top_arr[idx] = 0.0
+                        bottom_arr[idx] = 0.0
+                        obVolume[idx] = 0.0
+                        lowVolume[idx] = 0.0
+                        highVolume[idx] = 0.0
+                        mitigated_index[idx] = 0
+                        percentage[idx] = 0.0
+                        active_bearish.remove(idx)
+                else:
+                    if ((not close_mitigation and _high[close_index] > top_arr[idx])
+                        or (close_mitigation and max(_open[close_index], _close[close_index]) > top_arr[idx])):
+                        breaker[idx] = True
+                        mitigated_index[idx] = close_index
 
-            # Bearish Order Block
-            if len(ob[ob == -1]) > 0:
-                for j in range(len(ob) - 1, -1, -1):
-                    if ob[j] == -1:
-                        currentOB = j
-                        if breaker[currentOB]:
-                            if _low[close_index] < bottom[currentOB]:
-
-                                ob[j] = top[j] = bottom[j] = obVolume[j] = lowVolume[j] = (
-                                    highVolume[j]
-                                ) = mitigated_index[j] = percentage[j] = 0.0
-
-                        elif (
-                            not close_mitigation and _high[close_index] > top[currentOB]
-                        ) or (
-                            close_mitigation
-                            and max(
-                                _open[close_index],
-                                _close[close_index],
-                            )
-                            > top[currentOB]
-                        ):
-                            breaker[currentOB] = True
-                            mitigated_index[currentOB] = close_index
-
-            last_btm_indices = np.where(
-                (swing_highs_lows["HighLow"] == -1)
-                & (np.arange(len(swing_highs_lows["HighLow"])) < close_index)
-            )[0]
-            if last_btm_indices.size > 0:
-                last_btm_index = np.max(last_btm_indices)
-            else:
-                last_btm_index = None
+            # Find last swing low index less than current candle
+            pos = np.searchsorted(swing_low_indices, close_index)
+            last_btm_index = swing_low_indices[pos - 1] if pos > 0 else None
 
             if last_btm_index is not None:
-                swing_btm_price = _low[last_btm_index]
-                if close_price < swing_btm_price and not crossed[last_btm_index]:
+                if _close[close_index] < _low[last_btm_index] and not crossed[last_btm_index]:
                     crossed[last_btm_index] = True
-                    obBtm = _low[close_index - 1]
-                    obTop = _high[close_index - 1]
-                    obIndex = close_index - 1
-                    for j in range(1, close_index - last_btm_index):
-                        obTop = max(_high[last_btm_index + j], obTop)
-                        obBtm = (
-                            _low[last_btm_index + j]
-                            if obTop == _high[last_btm_index + j]
-                            else obBtm
-                        )
-                        obIndex = (
-                            last_btm_index + j
-                            if obTop == _high[last_btm_index + j]
-                            else obIndex
-                        )
-
+                    default_index = close_index - 1
+                    obTop = _high[default_index]
+                    obBtm = _low[default_index]
+                    obIndex = default_index
+                    if close_index - last_btm_index > 1:
+                        start = last_btm_index + 1
+                        end = close_index
+                        if end > start:
+                            segment = _high[start:end]
+                            max_val = segment.max()
+                            candidates = np.nonzero(segment == max_val)[0]
+                            if candidates.size:
+                                candidate_index = start + candidates[-1]
+                                obTop = _high[candidate_index]
+                                obBtm = _low[candidate_index]
+                                obIndex = candidate_index
                     ob[obIndex] = -1
-                    top[obIndex] = obTop
-                    bottom[obIndex] = obBtm
-                    obVolume[obIndex] = (
-                        _volume[close_index]
-                        + _volume[close_index - 1]
-                        + _volume[close_index - 2]
-                    )
+                    top_arr[obIndex] = obTop
+                    bottom_arr[obIndex] = obBtm
+                    obVolume[obIndex] = _volume[close_index] + _volume[close_index - 1] + _volume[close_index - 2]
                     lowVolume[obIndex] = _volume[close_index] + _volume[close_index - 1]
                     highVolume[obIndex] = _volume[close_index - 2]
-                    percentage[obIndex] = (
-                        np.min([highVolume[obIndex], lowVolume[obIndex]], axis=0)
-                        / np.max([highVolume[obIndex], lowVolume[obIndex]], axis=0)
-                        if np.max([highVolume[obIndex], lowVolume[obIndex]], axis=0) != 0
-                        else 1
-                    ) * 100.0
+                    max_vol = max(highVolume[obIndex], lowVolume[obIndex])
+                    percentage[obIndex] = (min(highVolume[obIndex], lowVolume[obIndex]) / max_vol * 100.0) if max_vol != 0 else 100.0
+                    active_bearish.append(obIndex)
 
+        # Convert zeros to NaN where OB was not set
         ob = np.where(ob != 0, ob, np.nan)
-        top = np.where(~np.isnan(ob), top, np.nan)
-        bottom = np.where(~np.isnan(ob), bottom, np.nan)
+        top_arr = np.where(~np.isnan(ob), top_arr, np.nan)
+        bottom_arr = np.where(~np.isnan(ob), bottom_arr, np.nan)
         obVolume = np.where(~np.isnan(ob), obVolume, np.nan)
         mitigated_index = np.where(~np.isnan(ob), mitigated_index, np.nan)
         percentage = np.where(~np.isnan(ob), percentage, np.nan)
 
         ob_series = pd.Series(ob, name="OB")
-        top_series = pd.Series(top, name="Top")
-        bottom_series = pd.Series(bottom, name="Bottom")
+        top_series = pd.Series(top_arr, name="Top")
+        bottom_series = pd.Series(bottom_arr, name="Bottom")
         obVolume_series = pd.Series(obVolume, name="OBVolume")
         mitigated_index_series = pd.Series(mitigated_index, name="MitigatedIndex")
         percentage_series = pd.Series(percentage, name="Percentage")
