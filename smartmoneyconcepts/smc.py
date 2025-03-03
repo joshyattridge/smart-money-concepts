@@ -378,7 +378,7 @@ class smc:
         ohlc: DataFrame,
         swing_highs_lows: DataFrame,
         close_mitigation: bool = False,
-    ) -> DataFrame:
+    ) -> Series:
         """
         OB - Order Blocks
         This method detects order blocks when there is a high amount of market orders exist on a price range.
@@ -564,13 +564,11 @@ class smc:
         )
 
     @classmethod
-    def liquidity(
-        cls, ohlc: DataFrame, swing_highs_lows: DataFrame, range_percent: float = 0.01
-    ) -> Series:
+    def liquidity(cls, ohlc: DataFrame, swing_highs_lows: DataFrame, range_percent: float = 0.01) -> Series:
         """
         Liquidity
-        Liquidity is when there are multiply highs within a small range of each other.
-        or multiply lows within a small range of each other.
+        Liquidity is when there are multiple highs within a small range of each other,
+        or multiple lows within a small range of each other.
 
         parameters:
         swing_highs_lows: DataFrame - provide the dataframe from the swing_highs_lows function
@@ -583,83 +581,115 @@ class smc:
         Swept = the index of the candle that swept the liquidity
         """
 
-        swing_highs_lows = swing_highs_lows.copy()
+        # Work on a copy so the original is not modified.
+        shl = swing_highs_lows.copy()
+        n = len(ohlc)
+        
+        # Calculate the pip range based on the overall high-low range.
+        pip_range = (ohlc["high"].max() - ohlc["low"].min()) * range_percent
 
-        # subtract the highest high from the lowest low
-        pip_range = (max(ohlc["high"]) - min(ohlc["low"])) * range_percent
+        # Preconvert required columns to numpy arrays.
+        ohlc_high = ohlc["high"].values
+        ohlc_low = ohlc["low"].values
+        # Make a copy to allow in-place marking of used candidates.
+        shl_HL = shl["HighLow"].values.copy()
+        shl_Level = shl["Level"].values.copy()
 
-        # go through all of the high level and if there are more than 1 within the pip range, then it is liquidity
-        liquidity = np.zeros(len(ohlc), dtype=np.int32)
-        liquidity_level = np.zeros(len(ohlc), dtype=np.float32)
-        liquidity_end = np.zeros(len(ohlc), dtype=np.int32)
-        liquidity_swept = np.zeros(len(ohlc), dtype=np.int32)
+        # Initialise output arrays with NaN (to match later replacement of zeros).
+        liquidity = np.full(n, np.nan, dtype=np.float32)
+        liquidity_level = np.full(n, np.nan, dtype=np.float32)
+        liquidity_end = np.full(n, np.nan, dtype=np.float32)
+        liquidity_swept = np.full(n, np.nan, dtype=np.float32)
 
-        for i in range(len(ohlc)):
-            if swing_highs_lows["HighLow"][i] == 1:
-                high_level = swing_highs_lows["Level"][i]
-                range_low = high_level - pip_range
-                range_high = high_level + pip_range
-                temp_liquidity_level = [high_level]
-                start = i
-                end = i
+        # Process bullish liquidity (HighLow == 1)
+        bull_indices = np.nonzero(shl_HL == 1)[0]
+        for i in bull_indices:
+            # Skip if this candidate has already been used.
+            if shl_HL[i] != 1:
+                continue
+            high_level = shl_Level[i]
+            range_low = high_level - pip_range
+            range_high = high_level + pip_range
+            group_levels = [high_level]
+            group_end = i
+
+            # Determine the swept index:
+            # Find the first candle after i where the high reaches or exceeds range_high.
+            c_start = i + 1
+            if c_start < n:
+                cond = ohlc_high[c_start:] >= range_high
+                if np.any(cond):
+                    swept = c_start + int(np.argmax(cond))
+                else:
+                    swept = 0
+            else:
                 swept = 0
-                for c in range(i + 1, len(ohlc)):
-                    if (
-                        swing_highs_lows["HighLow"][c] == 1
-                        and range_low <= swing_highs_lows["Level"][c] <= range_high
-                    ):
-                        end = c
-                        temp_liquidity_level.append(swing_highs_lows["Level"][c])
-                        swing_highs_lows.loc[c, "HighLow"] = 0
-                    if ohlc["high"].iloc[c] >= range_high:
-                        swept = c
-                        break
-                if len(temp_liquidity_level) > 1:
-                    average_high = sum(temp_liquidity_level) / len(temp_liquidity_level)
-                    liquidity[i] = 1
-                    liquidity_level[i] = average_high
-                    liquidity_end[i] = end
-                    liquidity_swept[i] = swept
 
-        # now do the same for the lows
-        for i in range(len(ohlc)):
-            if swing_highs_lows["HighLow"][i] == -1:
-                low_level = swing_highs_lows["Level"][i]
-                range_low = low_level - pip_range
-                range_high = low_level + pip_range
-                temp_liquidity_level = [low_level]
-                start = i
-                end = i
+            # Iterate only over candidate indices greater than i.
+            for j in bull_indices:
+                if j <= i:
+                    continue
+                # Emulate the inner loop break: if we've reached or passed the swept index, stop.
+                if swept and j >= swept:
+                    break
+                # If candidate j is within the liquidity range, add it and mark it as used.
+                if shl_HL[j] == 1 and (range_low <= shl_Level[j] <= range_high):
+                    group_levels.append(shl_Level[j])
+                    group_end = j
+                    shl_HL[j] = 0  # mark candidate as used
+            # Only record liquidity if more than one candidate is grouped.
+            if len(group_levels) > 1:
+                avg_level = sum(group_levels) / len(group_levels)
+                liquidity[i] = 1
+                liquidity_level[i] = avg_level
+                liquidity_end[i] = group_end
+                liquidity_swept[i] = swept
+
+        # Process bearish liquidity (HighLow == -1)
+        bear_indices = np.nonzero(shl_HL == -1)[0]
+        for i in bear_indices:
+            if shl_HL[i] != -1:
+                continue
+            low_level = shl_Level[i]
+            range_low = low_level - pip_range
+            range_high = low_level + pip_range
+            group_levels = [low_level]
+            group_end = i
+
+            # Find the first candle after i where the low reaches or goes below range_low.
+            c_start = i + 1
+            if c_start < n:
+                cond = ohlc_low[c_start:] <= range_low
+                if np.any(cond):
+                    swept = c_start + int(np.argmax(cond))
+                else:
+                    swept = 0
+            else:
                 swept = 0
-                for c in range(i + 1, len(ohlc)):
-                    if (
-                        swing_highs_lows["HighLow"][c] == -1
-                        and range_low <= swing_highs_lows["Level"][c] <= range_high
-                    ):
-                        end = c
-                        temp_liquidity_level.append(swing_highs_lows["Level"][c])
-                        swing_highs_lows.loc[c, "HighLow"] = 0
-                    if ohlc["low"].iloc[c] <= range_low:
-                        swept = c
-                        break
-                if len(temp_liquidity_level) > 1:
-                    average_low = sum(temp_liquidity_level) / len(temp_liquidity_level)
-                    liquidity[i] = -1
-                    liquidity_level[i] = average_low
-                    liquidity_end[i] = end
-                    liquidity_swept[i] = swept
 
-        liquidity = np.where(liquidity != 0, liquidity, np.nan)
-        liquidity_level = np.where(~np.isnan(liquidity), liquidity_level, np.nan)
-        liquidity_end = np.where(~np.isnan(liquidity), liquidity_end, np.nan)
-        liquidity_swept = np.where(~np.isnan(liquidity), liquidity_swept, np.nan)
+            for j in bear_indices:
+                if j <= i:
+                    continue
+                if swept and j >= swept:
+                    break
+                if shl_HL[j] == -1 and (range_low <= shl_Level[j] <= range_high):
+                    group_levels.append(shl_Level[j])
+                    group_end = j
+                    shl_HL[j] = 0
+            if len(group_levels) > 1:
+                avg_level = sum(group_levels) / len(group_levels)
+                liquidity[i] = -1
+                liquidity_level[i] = avg_level
+                liquidity_end[i] = group_end
+                liquidity_swept[i] = swept
 
-        liquidity = pd.Series(liquidity, name="Liquidity")
-        level = pd.Series(liquidity_level, name="Level")
-        liquidity_end = pd.Series(liquidity_end, name="End")
-        liquidity_swept = pd.Series(liquidity_swept, name="Swept")
+        # Convert arrays to Series with the proper names.
+        liq_series = pd.Series(liquidity, name="Liquidity")
+        level_series = pd.Series(liquidity_level, name="Level")
+        end_series = pd.Series(liquidity_end, name="End")
+        swept_series = pd.Series(liquidity_swept, name="Swept")
 
-        return pd.concat([liquidity, level, liquidity_end, liquidity_swept], axis=1)
+        return pd.concat([liq_series, level_series, end_series, swept_series], axis=1)
 
     @classmethod
     def previous_high_low(cls, ohlc: DataFrame, time_frame: str = "1D") -> Series:
