@@ -165,6 +165,14 @@ Direction = 1 if bullish retracement, -1 if bearish retracement<br>
 CurrentRetracement% = the current retracement percentage from the swing high or low<br>
 DeepestRetracement% = the deepest retracement percentage from the swing high or low<br>
 
+## Hide Credit Message
+
+```bash
+export SMC_CREDIT=0
+```
+
+This method will hide the credit message when you first import the library.
+
 ## Contributing
 
 This project is still in BETA so please feel free to contribute to the project. By creating your own indicators or improving the existing ones. If you are stuggling to find something to do then please check out the issues tab for requested changes.
