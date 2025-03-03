@@ -1,3 +1,8 @@
+[![PyPI](https://img.shields.io/pypi/v/smartmoneyconcepts.svg?style=flat-square)](https://pypi.org/project/smartmoneyconcepts/)
+[![Downloads](https://pepy.tech/badge/smartmoneyconcepts/month)](https://pepy.tech/project/smartmoneyconcepts/month)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
+[![Bitcoin Donate](https://badgen.net/badge/Bitcoin/Donate/F19537?icon=bitcoin)](https://blockstream.info/address/bc1petss2mlqyjsajyzhu06wzl667v0f8svc0hnpqjj2d32frtx77g4sg5s0pg)
+
 <p align="center">
   <img src="https://github.com/joshyattridge/smart-money-concepts/blob/f0c0fc28cc290cdd9dfcc6a6ac246ed1d59061be/tests/test.gif" alt="Candle Graph Showing Indicators"/>
 </p>
