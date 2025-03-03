@@ -4,6 +4,7 @@ import numpy as np
 from pandas import DataFrame, Series
 from datetime import datetime
 
+
 def inputvalidator(input_="ohlc"):
     def dfcheck(func):
         @wraps(func)
@@ -50,7 +51,7 @@ def apply(decorator):
 
 @apply(inputvalidator(input_="ohlc"))
 class smc:
-    __version__ = "0.0.25"
+    __version__ = "0.0.21"
 
     @classmethod
     def fvg(cls, ohlc: DataFrame, join_consecutive=False) -> Series:
@@ -242,9 +243,6 @@ class smc:
         if swing_length <= 0:
             raise ValueError("swing_length should be positive integer")
 
-        if isinstance(ohlc.index, pd.DatetimeIndex):
-            ohlc.reset_index(inplace=True)
-
         swing_highs_lows = np.full(len(ohlc), np.nan)
 
         future_highs = ohlc["high"].shift(1)
@@ -286,6 +284,7 @@ class smc:
                 index_to_remove[:-1] |= consecutive_highs & (highs < next_highs)
                 index_to_remove[1:] |= consecutive_highs & (highs >= next_highs)
             else:
+
                 index_to_remove[:-1] |= (
                     consecutive_highs
                     & (highs < next_highs)
@@ -351,8 +350,8 @@ class smc:
 
     @classmethod
     def bos_choch(
-        cls, ohlc: DataFrame, swing_highs_lows: DataFrame, close_break: bool = True
-    ) -> DataFrame:
+        cls, ohlc: DataFrame, swing_highs_lows: pd.DataFrame, close_break: bool = True
+    ):
         """
         BOS - Break of Structure
         CHoCH - Change of Character
@@ -370,14 +369,6 @@ class smc:
         BrokenDate = the datetime of the candle that broke the level
         """
         shl = swing_highs_lows.copy()
-
-        if isinstance(ohlc.index, pd.DatetimeIndex):
-            rename_col = None
-            if ohlc.index.name != "date":
-                rename_col = ohlc.index.name
-            ohlc.reset_index(inplace=True)
-            if rename_col is not None:
-                ohlc.rename(columns={rename_col: "date"}, inplace=True)
 
         _high_low = shl["HighLow"].values
         _dates = ohlc["date"].values.astype("datetime64[ns]")
@@ -511,40 +502,26 @@ class smc:
     def ob(
         cls,
         ohlc: DataFrame,
-        shl: DataFrame,
+        shl: pd.DataFrame,
         close_mitigation: bool = True,
         use_bos: bool = True,
         use_choch: bool = True,
-    ) -> DataFrame:
+    ):
         """
         OB - Order Blocks
         This method detects order blocks when there is a high amount of market orders exist on a price range.
 
         parameters:
-        ohlc: DataFrame - provide the ohlc data that which is used for calculating the shl
-        shl: DataFrame - provide the dataframe from the swing_highs_lows function
+        swing_highs_lows: DataFrame - provide the dataframe from the swing_highs_lows function
         close_mitigation: bool - if True then the order block will be mitigated based on the close of the candle otherwise it will be the high/low.
-        use_bos: bool - if break of structure are to be used to calculate order blocks.
-        use_choch: bool - if change of character are to be used to calculate order blocks.
 
         returns:
         OB = 1 if bullish order block, -1 if bearish order block
         Top = top of the order block
         Bottom = bottom of the order block
-        ConfirmDate = datetime when order block was confirmed (when structure was confirmed that formed the order block)
-        MitigationDate = datetime when order block was mitigated
-        MitigatedIndex = index when order block was mitigated
         OBVolume = volume + 2 last volumes amounts
         Percentage = strength of order block (min(highVolume, lowVolume)/max(highVolume,lowVolume))
         """
-
-        if isinstance(ohlc.index, pd.DatetimeIndex):
-            rename_col=None
-            if ohlc.index.name != 'date':
-                rename_col = ohlc.index.name
-            ohlc.reset_index(inplace=True)
-            if rename_col is not None:
-                ohlc.rename(columns={rename_col:'date'}, inplace=True)
 
         _high_low = shl["HighLow"].values
         _dates = ohlc["date"].values.astype("datetime64[ns]")
@@ -600,11 +577,11 @@ class smc:
                             use_structure = True
 
                     bos_level[last_swing_high_index] = last_swing_high
-                    structure_complete_date[last_swing_high_index] = _dates[i + 1]
+                    structure_complete_date[last_swing_high_index] = _dates[i]
 
                     if use_structure:
                         ob[last_swing_low_index] = -1
-                        ob_confirm_date[last_swing_low_index] = _dates[i + 1]
+                        ob_confirm_date[last_swing_low_index] = _dates[i]
                         ob_low_indices = np.concatenate(
                             (
                                 ob_low_indices,
@@ -621,17 +598,18 @@ class smc:
 
                 # upper order block mitigated
                 if _close[i] >= last_ob_high:
-                    idx_to_delete = []
+                    idx_to_delete = None
                     for row_idx, row in enumerate(ob_high_indices):
                         ob_high_index, swing_high = row
-                        if _close[i] >= swing_high:
-                            idx_to_delete.append(row_idx)
+                        if last_ob_high == swing_high:
+                            idx_to_delete = row_idx
                             ob_mitigation_date[int(ob_high_index)] = _dates[i]
                             ob_mitigated_index[int(ob_high_index)] = i
 
                     mask = np.ones(ob_high_indices.shape[0], dtype=bool)
-                    mask[idx_to_delete] = False
-                    ob_high_indices = ob_high_indices[mask]
+                    if idx_to_delete is not None:
+                        mask[idx_to_delete] = False
+                        ob_high_indices = ob_high_indices[mask]
                     if np.any(ob_high_indices):
                         last_ob_high = ob_high_indices[:, 1].min()
                     else:
@@ -650,11 +628,11 @@ class smc:
                             use_structure = True
 
                     bos_level[last_swing_low_index] = last_swing_low
-                    structure_complete_date[last_swing_low_index] = _dates[i + 1]
+                    structure_complete_date[last_swing_low_index] = _dates[i]
 
                     if use_structure:
                         ob[last_swing_high_index] = 1
-                        ob_confirm_date[last_swing_high_index] = _dates[i + 1]
+                        ob_confirm_date[last_swing_high_index] = _dates[i]
 
                         ob_high_indices = np.concatenate(
                             (
@@ -672,17 +650,19 @@ class smc:
 
                 # lower order block mitigated
                 if _close[i] <= last_ob_low:
-                    idx_to_delete = []
+
+                    idx_to_delete = None
                     for row_idx, row in enumerate(ob_low_indices):
                         ob_low_index, swing_low = row
-                        if _close[i] <= swing_low:
-                            idx_to_delete.append(row_idx)
+                        if last_ob_low == swing_low:
+                            idx_to_delete = row_idx
                             ob_mitigation_date[int(ob_low_index)] = _dates[i]
                             ob_mitigated_index[int(ob_low_index)] = i
 
                     mask = np.ones(ob_low_indices.shape[0], dtype=bool)
-                    mask[idx_to_delete] = False
-                    ob_low_indices = ob_low_indices[mask]
+                    if idx_to_delete is not None:
+                        mask[idx_to_delete] = False
+                        ob_low_indices = ob_low_indices[mask]
 
                     if np.any(ob_low_indices):
                         last_ob_low = ob_low_indices[:, 1].max()
@@ -713,11 +693,11 @@ class smc:
                             use_structure = True
 
                     bos_level[last_swing_high_index] = last_swing_high
-                    structure_complete_date[last_swing_high_index] = _dates[i + 1]
+                    structure_complete_date[last_swing_high_index] = _dates[i]
 
                     if use_structure:
                         ob[last_swing_low_index] = -1
-                        ob_confirm_date[last_swing_low_index] = _dates[i + 1]
+                        ob_confirm_date[last_swing_low_index] = _dates[i]
 
                         ob_low_indices = np.concatenate(
                             (
@@ -735,11 +715,11 @@ class smc:
 
                 # upper order block mitigated
                 if _high[i] >= last_ob_high:
-                    idx_to_delete = []
+                    idx_to_delete = 0
                     for row_idx, row in enumerate(ob_high_indices):
                         ob_high_index, swing_high = row
-                        if _high[i] >= swing_high:
-                            idx_to_delete.append(row_idx)
+                        if last_ob_high == swing_high:
+                            idx_to_delete = row_idx
                             ob_mitigation_date[int(ob_high_index)] = _dates[i]
 
                     mask = np.ones(ob_high_indices.shape[0], dtype=bool)
@@ -764,11 +744,11 @@ class smc:
                             use_structure = True
 
                     bos_level[last_swing_low_index] = last_swing_low
-                    structure_complete_date[last_swing_low_index] = _dates[i + 1]
+                    structure_complete_date[last_swing_low_index] = _dates[i]
 
                     if use_structure:
                         ob[last_swing_high_index] = 1
-                        ob_confirm_date[last_swing_high_index] = _dates[i + 1]
+                        ob_confirm_date[last_swing_high_index] = _dates[i]
 
                         ob_high_indices = np.concatenate(
                             (
@@ -787,11 +767,11 @@ class smc:
                 # lower order block mitigated
                 if _low[i] <= last_ob_low:
 
-                    idx_to_delete = []
+                    idx_to_delete = 0
                     for row_idx, row in enumerate(ob_low_indices):
                         ob_low_index, swing_low = row
-                        if _low[i] <= swing_low:
-                            idx_to_delete.append(row_idx)
+                        if last_ob_low == swing_low:
+                            idx_to_delete = row_idx
                             ob_mitigation_date[int(ob_low_index)] = _dates[i]
 
                     mask = np.ones(ob_low_indices.shape[0], dtype=bool)
@@ -956,23 +936,25 @@ class smc:
         broken_high = np.zeros(len(ohlc), dtype=np.int32)
         broken_low = np.zeros(len(ohlc), dtype=np.int32)
 
-        resampled_ohlc = ohlc.resample(time_frame).agg(
-            {
-                "open": "first",
-                "high": "max",
-                "low": "min",
-                "close": "last",
-                "volume": "sum",
-            }
-        ).dropna()
+        resampled_ohlc = (
+            ohlc.resample(time_frame)
+            .agg(
+                {
+                    "open": "first",
+                    "high": "max",
+                    "low": "min",
+                    "close": "last",
+                    "volume": "sum",
+                }
+            )
+            .dropna()
+        )
 
         currently_broken_high = False
         currently_broken_low = False
         last_broken_time = None
         for i in range(len(ohlc)):
-            resampled_previous_index = np.where(
-                resampled_ohlc.index < ohlc.index[i]
-            )[0]
+            resampled_previous_index = np.where(resampled_ohlc.index < ohlc.index[i])[0]
             if len(resampled_previous_index) <= 1:
                 previous_high[i] = np.nan
                 previous_low[i] = np.nan
@@ -984,10 +966,14 @@ class smc:
                 currently_broken_low = False
                 last_broken_time = resampled_previous_index
 
-            previous_high[i] = resampled_ohlc["high"].iloc[resampled_previous_index] 
+            previous_high[i] = resampled_ohlc["high"].iloc[resampled_previous_index]
             previous_low[i] = resampled_ohlc["low"].iloc[resampled_previous_index]
-            currently_broken_high = ohlc["high"].iloc[i] > previous_high[i] or currently_broken_high
-            currently_broken_low = ohlc["low"].iloc[i] < previous_low[i] or currently_broken_low
+            currently_broken_high = (
+                ohlc["high"].iloc[i] > previous_high[i] or currently_broken_high
+            )
+            currently_broken_low = (
+                ohlc["low"].iloc[i] < previous_low[i] or currently_broken_low
+            )
             broken_high[i] = 1 if currently_broken_high else 0
             broken_low[i] = 1 if currently_broken_low else 0
 
