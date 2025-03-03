@@ -2,8 +2,8 @@ from setuptools import setup
 import codecs
 import os
 
-VERSION = '0.0.21'
-DESCRIPTION = 'Getting indicators based on smart money concepts or ICT'
+VERSION = "0.0.22"
+DESCRIPTION = "Getting indicators based on smart money concepts or ICT"
 
 # read the contents of the README file
 with codecs.open("README.md", encoding="utf-8") as f:
