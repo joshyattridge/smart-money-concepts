@@ -7,7 +7,7 @@
   <img src="https://github.com/joshyattridge/smart-money-concepts/blob/f0c0fc28cc290cdd9dfcc6a6ac246ed1d59061be/tests/test.gif" alt="Candle Graph Showing Indicators"/>
 </p>
 
-# Smart Money Concepts (smc) BETA
+# Smart Money Concepts (smc)
 
 The Smart Money Concepts Python Indicator is a sophisticated financial tool developed for traders and investors to gain insights into market sentiment, trends, and potential reversals. This indicator is inspired by Inner Circle Trader (ICT) concepts like Order blocks, Liquidity, Fair Value Gap, Swing Highs and Lows, Break of Structure, Change of Character, and more. Please Take a look and contribute to the project.
 
@@ -180,7 +180,7 @@ This method will hide the credit message when you first import the library.
 
 ## Contributing
 
-This project is still in BETA so please feel free to contribute to the project. By creating your own indicators or improving the existing ones. If you are stuggling to find something to do then please check out the issues tab for requested changes.
+Please feel free to contribute to the project. By creating your own indicators or improving the existing ones. If you are stuggling to find something to do then please check out the issues tab for requested changes.
 
 1. Fork it (https://github.com/joshyattridge/smartmoneyconcepts/fork).
 2. Study how it's implemented.
