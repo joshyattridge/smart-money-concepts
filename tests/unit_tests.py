@@ -52,15 +52,15 @@ class TestSmartMoneyConcepts(unittest.TestCase):
             bos_choch_data, bos_choch_result_data, check_dtype=False
         )
 
-    # def test_ob(self):
-    #     start_time = time.time()
-    #     swing_highs_lows_data = smc.swing_highs_lows(df, swing_length=5)
-    #     ob_data = smc.ob(df, swing_highs_lows_data)
-    #     ob_result_data = pd.read_csv(
-    #         os.path.join("test_data", test_instrument, "ob_result_data.csv")
-    #     )
-    #     print("ob test time: ", time.time() - start_time)
-    #     pd.testing.assert_frame_equal(ob_data, ob_result_data, check_dtype=False)
+    def test_ob(self):
+        start_time = time.time()
+        swing_highs_lows_data = smc.swing_highs_lows(df, swing_length=5)
+        ob_data = smc.ob(df, swing_highs_lows_data)
+        ob_result_data = pd.read_csv(
+            os.path.join("test_data", test_instrument, "ob_result_data.csv")
+        )
+        print("ob test time: ", time.time() - start_time)
+        pd.testing.assert_frame_equal(ob_data, ob_result_data, check_dtype=False)
 
     def test_liquidity(self):
         start_time = time.time()
