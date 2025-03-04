@@ -50,7 +50,7 @@ def apply(decorator):
 
 @apply(inputvalidator(input_="ohlc"))
 class smc:
-    __version__ = "0.0.25"
+    __version__ = "0.0.26"
 
     @classmethod
     def fvg(cls, ohlc: DataFrame, join_consecutive=False) -> Series:
