@@ -22,12 +22,21 @@ class TestSmartMoneyConcepts(unittest.TestCase):
 
     def test_fvg(self):
         start_time = time.time()
-        fvg_data = smc.fvg(df, join_consecutive=True)
+        fvg_data = smc.fvg(df)
         fvg_result_data = pd.read_csv(
             os.path.join("test_data", test_instrument, "fvg_result_data.csv")
         )
         print("fvg test time: ", time.time() - start_time)
         pd.testing.assert_frame_equal(fvg_data, fvg_result_data, check_dtype=False)
+
+    def test_fvg_consecutive(self):
+        start_time = time.time()
+        fvg_data = smc.fvg(df, join_consecutive=True)
+        fvg_consecutive_result_data = pd.read_csv(
+            os.path.join("test_data", test_instrument, "fvg_consecutive_result_data.csv")
+        )
+        print("fvg consecutive test time: ", time.time() - start_time)
+        pd.testing.assert_frame_equal(fvg_data, fvg_consecutive_result_data, check_dtype=False)
 
     def test_swing_highs_lows(self):
         start_time = time.time()
@@ -131,10 +140,15 @@ if __name__ == "__main__":
 
 
 # def generate_results_data():
-#     fvg_data = smc.fvg(df, join_consecutive=True)
+#     fvg_data = smc.fvg(df)
 #     fvg_data.to_csv(
 #         os.path.join("test_data", test_instrument, "fvg_result_data.csv"), index=False
 #     )
+
+    # fvg_data = smc.fvg(df, join_consecutive=True)
+    # fvg_data.to_csv(
+    #     os.path.join("test_data", test_instrument, "fvg_consecutive_result_data.csv"), index=False
+    # )
 
 #     swing_highs_lows_data = smc.swing_highs_lows(df, swing_length=5)
 #     swing_highs_lows_data.to_csv(
