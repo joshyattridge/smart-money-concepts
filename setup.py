@@ -18,7 +18,7 @@ setup(
     long_description_content_type="text/markdown",
     long_description=LONG_DESCRIPTION,
     packages=["smartmoneyconcepts"],
-    install_requires=["pandas==2.0.2", "numpy==1.24.3", "numba==0.58.1"],
+    install_requires=["pandas>=2.0.2", "numpy>=1.24.3", "numba>=0.58.1"],
     keywords=[
         "smart",
         "money",
