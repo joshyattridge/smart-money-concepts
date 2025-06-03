@@ -473,9 +473,12 @@ class smc:
                     ob[obIndex] = 1
                     top_arr[obIndex] = obTop
                     bottom_arr[obIndex] = obBtm
-                    obVolume[obIndex] = _volume[close_index] + _volume[close_index - 1] + _volume[close_index - 2]
-                    lowVolume[obIndex] = _volume[close_index - 2]
-                    highVolume[obIndex] = _volume[close_index] + _volume[close_index - 1]
+                    vol_cur = _volume[close_index]
+                    vol_prev1 = _volume[close_index - 1] if close_index >= 1 else 0.0
+                    vol_prev2 = _volume[close_index - 2] if close_index >= 2 else 0.0
+                    obVolume[obIndex] = vol_cur + vol_prev1 + vol_prev2
+                    lowVolume[obIndex] = vol_prev2
+                    highVolume[obIndex] = vol_cur + vol_prev1
                     max_vol = max(highVolume[obIndex], lowVolume[obIndex])
                     percentage[obIndex] = (min(highVolume[obIndex], lowVolume[obIndex]) / max_vol * 100.0) if max_vol != 0 else 100.0
                     active_bullish.append(obIndex)
@@ -529,9 +532,12 @@ class smc:
                     ob[obIndex] = -1
                     top_arr[obIndex] = obTop
                     bottom_arr[obIndex] = obBtm
-                    obVolume[obIndex] = _volume[close_index] + _volume[close_index - 1] + _volume[close_index - 2]
-                    lowVolume[obIndex] = _volume[close_index] + _volume[close_index - 1]
-                    highVolume[obIndex] = _volume[close_index - 2]
+                    vol_cur = _volume[close_index]
+                    vol_prev1 = _volume[close_index - 1] if close_index >= 1 else 0.0
+                    vol_prev2 = _volume[close_index - 2] if close_index >= 2 else 0.0
+                    obVolume[obIndex] = vol_cur + vol_prev1 + vol_prev2
+                    lowVolume[obIndex] = vol_cur + vol_prev1
+                    highVolume[obIndex] = vol_prev2
                     max_vol = max(highVolume[obIndex], lowVolume[obIndex])
                     percentage[obIndex] = (min(highVolume[obIndex], lowVolume[obIndex]) / max_vol * 100.0) if max_vol != 0 else 100.0
                     active_bearish.append(obIndex)
