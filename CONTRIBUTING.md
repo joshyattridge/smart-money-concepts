@@ -1,6 +1,6 @@
 ## Contributing
 
-This project is still in BETA so please feel free to contribute to the project. By creating your own indicators or improving the existing ones. If you are stuggling to find something to do then please check out the issues tab for requested changes.
+This project is still in BETA so please feel free to contribute to the project. By creating your own indicators or improving the existing ones. If you are struggling to find something to do then please check out the issues tab for requested changes.
 
 1. Fork it (https://github.com/joshyattridge/smartmoneyconcepts/fork).
 2. Study how it's implemented.
