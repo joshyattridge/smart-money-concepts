@@ -134,6 +134,8 @@ time_frame: str - the time frame to get the previous high and low 15m, 1H, 4H, 1
 returns:<br>
 PreviousHigh = the previous high<br>
 PreviousLow = the previous low<br>
+BrokenHigh = 1 once price has broken the previous high of the timeframe, 0 otherwise<br>
+BrokenLow = 1 once price has broken the previous low of the timeframe, 0 otherwise<br>
 
 ### Sessions
 

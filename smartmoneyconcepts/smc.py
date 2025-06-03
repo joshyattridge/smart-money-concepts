@@ -703,6 +703,8 @@ class smc:
         returns:
         PreviousHigh = the previous high
         PreviousLow = the previous low
+        BrokenHigh = 1 once price has broken the previous high of the timeframe, 0 otherwise
+        BrokenLow = 1 once price has broken the previous low of the timeframe, 0 otherwise
         """
 
         ohlc.index = pd.to_datetime(ohlc.index)
