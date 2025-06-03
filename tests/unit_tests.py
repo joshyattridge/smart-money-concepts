@@ -6,13 +6,16 @@ import time
 import pandas as pd
 import unittest
 
-sys.path.append(os.path.abspath("../"))
+BASE_PATH = os.path.dirname(__file__)
+sys.path.append(os.path.abspath(os.path.join(BASE_PATH, os.pardir)))
 from smartmoneyconcepts.smc import smc
 
 # define and import test data
 test_instrument = "EURUSD"
 instrument_data = f"{test_instrument}_15M.csv"
-df = pd.read_csv(os.path.join("test_data", test_instrument, instrument_data))
+df = pd.read_csv(
+    os.path.join(BASE_PATH, "test_data", test_instrument, instrument_data)
+)
 df = df.set_index("Date")
 df.index = pd.to_datetime(df.index)
 
@@ -24,7 +27,7 @@ class TestSmartMoneyConcepts(unittest.TestCase):
         start_time = time.time()
         fvg_data = smc.fvg(df)
         fvg_result_data = pd.read_csv(
-            os.path.join("test_data", test_instrument, "fvg_result_data.csv")
+            os.path.join(BASE_PATH, "test_data", test_instrument, "fvg_result_data.csv")
         )
         print("fvg test time: ", time.time() - start_time)
         pd.testing.assert_frame_equal(fvg_data, fvg_result_data, check_dtype=False)
@@ -33,7 +36,12 @@ class TestSmartMoneyConcepts(unittest.TestCase):
         start_time = time.time()
         fvg_data = smc.fvg(df, join_consecutive=True)
         fvg_consecutive_result_data = pd.read_csv(
-            os.path.join("test_data", test_instrument, "fvg_consecutive_result_data.csv")
+            os.path.join(
+                BASE_PATH,
+                "test_data",
+                test_instrument,
+                "fvg_consecutive_result_data.csv",
+            )
         )
         print("fvg consecutive test time: ", time.time() - start_time)
         pd.testing.assert_frame_equal(fvg_data, fvg_consecutive_result_data, check_dtype=False)
@@ -43,7 +51,10 @@ class TestSmartMoneyConcepts(unittest.TestCase):
         swing_highs_lows_data = smc.swing_highs_lows(df, swing_length=5)
         swing_highs_lows_result_data = pd.read_csv(
             os.path.join(
-                "test_data", test_instrument, "swing_highs_lows_result_data.csv"
+                BASE_PATH,
+                "test_data",
+                test_instrument,
+                "swing_highs_lows_result_data.csv",
             )
         )
         print("swing_highs_lows test time: ", time.time() - start_time)
@@ -54,7 +65,7 @@ class TestSmartMoneyConcepts(unittest.TestCase):
         swing_highs_lows_data = smc.swing_highs_lows(df, swing_length=5)
         bos_choch_data = smc.bos_choch(df, swing_highs_lows_data)
         bos_choch_result_data = pd.read_csv(
-            os.path.join("test_data", test_instrument, "bos_choch_result_data.csv")
+            os.path.join(BASE_PATH, "test_data", test_instrument, "bos_choch_result_data.csv")
         )
         print("bos_choch test time: ", time.time() - start_time)
         pd.testing.assert_frame_equal(
@@ -66,7 +77,7 @@ class TestSmartMoneyConcepts(unittest.TestCase):
         swing_highs_lows_data = smc.swing_highs_lows(df, swing_length=5)
         ob_data = smc.ob(df, swing_highs_lows_data)
         ob_result_data = pd.read_csv(
-            os.path.join("test_data", test_instrument, "ob_result_data.csv")
+            os.path.join(BASE_PATH, "test_data", test_instrument, "ob_result_data.csv")
         )
         print("ob test time: ", time.time() - start_time)
         pd.testing.assert_frame_equal(ob_data, ob_result_data, check_dtype=False)
@@ -76,7 +87,7 @@ class TestSmartMoneyConcepts(unittest.TestCase):
         swing_highs_lows_data = smc.swing_highs_lows(df, swing_length=5)
         liquidity_data = smc.liquidity(df, swing_highs_lows_data)
         liquidity_result_data = pd.read_csv(
-            os.path.join("test_data", test_instrument, "liquidity_result_data.csv")
+            os.path.join(BASE_PATH, "test_data", test_instrument, "liquidity_result_data.csv")
         )
         print("liquidity test time: ", time.time() - start_time)
         pd.testing.assert_frame_equal(liquidity_data, liquidity_result_data, check_dtype=False)
@@ -87,7 +98,10 @@ class TestSmartMoneyConcepts(unittest.TestCase):
         previous_high_low_data = smc.previous_high_low(df, time_frame="4h")
         previous_high_low_result_data = pd.read_csv(
             os.path.join(
-                "test_data", test_instrument, "previous_high_low_result_data_4h.csv"
+                BASE_PATH,
+                "test_data",
+                test_instrument,
+                "previous_high_low_result_data_4h.csv",
             )
         )
         print("previous_high_low test time: ", time.time() - start_time)
@@ -98,7 +112,10 @@ class TestSmartMoneyConcepts(unittest.TestCase):
         previous_high_low_data = smc.previous_high_low(df, time_frame="1D")
         previous_high_low_result_data = pd.read_csv(
             os.path.join(
-                "test_data", test_instrument, "previous_high_low_result_data_1D.csv"
+                BASE_PATH,
+                "test_data",
+                test_instrument,
+                "previous_high_low_result_data_1D.csv",
             )
         )
         print("previous_high_low test time: ", time.time() - start_time)
@@ -109,7 +126,10 @@ class TestSmartMoneyConcepts(unittest.TestCase):
         previous_high_low_data = smc.previous_high_low(df, time_frame="W")
         previous_high_low_result_data = pd.read_csv(
             os.path.join(
-                "test_data", test_instrument, "previous_high_low_result_data_W.csv"
+                BASE_PATH,
+                "test_data",
+                test_instrument,
+                "previous_high_low_result_data_W.csv",
             )
         )
         print("previous_high_low test time: ", time.time() - start_time)
@@ -119,7 +139,7 @@ class TestSmartMoneyConcepts(unittest.TestCase):
         start_time = time.time()
         sessions = smc.sessions(df, session="London")
         sessions_result_data = pd.read_csv(
-            os.path.join("test_data", test_instrument, "sessions_result_data.csv")
+            os.path.join(BASE_PATH, "test_data", test_instrument, "sessions_result_data.csv")
         )
         print("sessions test time: ", time.time() - start_time)
         pd.testing.assert_frame_equal(sessions, sessions_result_data, check_dtype=False)
@@ -129,7 +149,7 @@ class TestSmartMoneyConcepts(unittest.TestCase):
         swing_highs_lows_data = smc.swing_highs_lows(df, swing_length=5)
         retracements = smc.retracements(df, swing_highs_lows_data)
         retracements_result_data = pd.read_csv(
-            os.path.join("test_data", test_instrument, "retracements_result_data.csv")
+            os.path.join(BASE_PATH, "test_data", test_instrument, "retracements_result_data.csv")
         )
         print("retracements test time: ", time.time() - start_time)
         pd.testing.assert_frame_equal(retracements, retracements_result_data, check_dtype=False)
