@@ -162,6 +162,8 @@ class smc:
             ),
         )
 
+        copy_swing_highs_lows = swing_highs_lows.copy()
+
         while True:
             positions = np.where(~np.isnan(swing_highs_lows))[0]
 
@@ -194,26 +196,44 @@ class smc:
 
         positions = np.where(~np.isnan(swing_highs_lows))[0]
 
-        if len(positions) > 0:
-            if swing_highs_lows[positions[0]] == 1:
-                swing_highs_lows[0] = -1
-            if swing_highs_lows[positions[0]] == -1:
-                swing_highs_lows[0] = 1
-            if swing_highs_lows[positions[-1]] == -1:
-                swing_highs_lows[-1] = 1
-            if swing_highs_lows[positions[-1]] == 1:
-                swing_highs_lows[-1] = -1
+        # if len(positions) > 0:
+        #     if swing_highs_lows[positions[0]] == 1:
+        #         swing_highs_lows[0] = -1
+        #     if swing_highs_lows[positions[0]] == -1:
+        #         swing_highs_lows[0] = 1
+        #     if swing_highs_lows[positions[-1]] == -1:
+        #         swing_highs_lows[-1] = 1
+        #     if swing_highs_lows[positions[-1]] == 1:
+        #         swing_highs_lows[-1] = -1
 
         level = np.where(
-            ~np.isnan(swing_highs_lows),
-            np.where(swing_highs_lows == 1, ohlc["high"], ohlc["low"]),
+            ~np.isnan(copy_swing_highs_lows),
+            np.where(copy_swing_highs_lows == 1, ohlc["high"], ohlc["low"]),
             np.nan,
         )
+
+        label = pd.Series([None] * len(copy_swing_highs_lows))
+
+        for sign in [1, -1]:
+            positions = np.where(copy_swing_highs_lows == sign)[0]
+            prev = None
+            for i in positions:
+                if prev is None:
+                    prev = level[i]
+                    continue
+                if level[i] > prev:
+                    label[i] = 'HH' if sign == 1 else 'HL'
+                elif level[i] < prev:
+                    label[i] = 'LH' if sign == 1 else 'LL'
+                else:
+                    label[i] = None
+                prev = level[i]
 
         return pd.concat(
             [
                 pd.Series(swing_highs_lows, name="HighLow"),
                 pd.Series(level, name="Level"),
+                pd.Series(label, name="Label"),
             ],
             axis=1,
         )
