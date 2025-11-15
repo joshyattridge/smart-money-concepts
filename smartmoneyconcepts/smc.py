@@ -1,8 +1,10 @@
-from functools import wraps
-import pandas as pd
-import numpy as np
-from pandas import DataFrame, Series
 from datetime import datetime
+from functools import wraps
+
+import numpy as np
+import pandas as pd
+from pandas import DataFrame, Series
+
 
 def inputvalidator(input_="ohlc"):
     def dfcheck(func):
@@ -71,12 +73,12 @@ class smc:
 
         fvg = np.where(
             (
-                (ohlc["high"].shift(1) < ohlc["low"].shift(-1))
-                & (ohlc["close"] > ohlc["open"])
+                    (ohlc["high"].shift(1) < ohlc["low"].shift(-1))
+                    & (ohlc["close"] > ohlc["open"])
             )
             | (
-                (ohlc["low"].shift(1) > ohlc["high"].shift(-1))
-                & (ohlc["close"] < ohlc["open"])
+                    (ohlc["low"].shift(1) > ohlc["high"].shift(-1))
+                    & (ohlc["close"] < ohlc["open"])
             ),
             np.where(ohlc["close"] > ohlc["open"], 1, -1),
             np.nan,
@@ -114,9 +116,9 @@ class smc:
         for i in np.where(~np.isnan(fvg))[0]:
             mask = np.zeros(len(ohlc), dtype=np.bool_)
             if fvg[i] == 1:
-                mask = ohlc["low"][i + 2 :] <= top[i]
+                mask = ohlc["low"][i + 2:] <= top[i]
             elif fvg[i] == -1:
-                mask = ohlc["high"][i + 2 :] >= bottom[i]
+                mask = ohlc["high"][i + 2:] >= bottom[i]
             if np.any(mask):
                 j = np.argmax(mask) + i + 2
                 mitigated_index[i] = j
@@ -162,8 +164,6 @@ class smc:
             ),
         )
 
-        copy_swing_highs_lows = swing_highs_lows.copy()
-
         while True:
             positions = np.where(~np.isnan(swing_highs_lows))[0]
 
@@ -196,26 +196,16 @@ class smc:
 
         positions = np.where(~np.isnan(swing_highs_lows))[0]
 
-        # if len(positions) > 0:
-        #     if swing_highs_lows[positions[0]] == 1:
-        #         swing_highs_lows[0] = -1
-        #     if swing_highs_lows[positions[0]] == -1:
-        #         swing_highs_lows[0] = 1
-        #     if swing_highs_lows[positions[-1]] == -1:
-        #         swing_highs_lows[-1] = 1
-        #     if swing_highs_lows[positions[-1]] == 1:
-        #         swing_highs_lows[-1] = -1
-
         level = np.where(
-            ~np.isnan(copy_swing_highs_lows),
-            np.where(copy_swing_highs_lows == 1, ohlc["high"], ohlc["low"]),
+            ~np.isnan(swing_highs_lows),
+            np.where(swing_highs_lows == 1, ohlc["high"], ohlc["low"]),
             np.nan,
         )
 
-        label = pd.Series([None] * len(copy_swing_highs_lows))
+        label = pd.Series([None] * len(swing_highs_lows))
 
         for sign in [1, -1]:
-            positions = np.where(copy_swing_highs_lows == sign)[0]
+            positions = np.where(swing_highs_lows == sign)[0]
             prev = None
             for i in positions:
                 if prev is None:
@@ -223,11 +213,12 @@ class smc:
                     continue
                 if level[i] > prev:
                     label[i] = 'HH' if sign == 1 else 'HL'
+                    prev = level[i]
                 elif level[i] < prev:
                     label[i] = 'LH' if sign == 1 else 'LL'
+                    prev = level[i]
                 else:
                     label[i] = None
-                prev = level[i]
 
         return pd.concat(
             [
@@ -240,7 +231,7 @@ class smc:
 
     @classmethod
     def bos_choch(
-        cls, ohlc: DataFrame, swing_highs_lows: DataFrame, close_break: bool = True
+            cls, ohlc: DataFrame, swing_highs_lows: DataFrame, close_break: bool = True
     ) -> Series:
         """
         BOS - Break of Structure
@@ -321,7 +312,7 @@ class smc:
                                 else:
                                     weak[last_positions[-1]] = ohlc["high"].iloc[j:].idxmax()
                                 last_position = 'high'
-                                #print('CHOCH', 1.0, swing_highs_lows['start_date'][last_positions[-1]])
+                                # print('CHOCH', 1.0, swing_highs_lows['start_date'][last_positions[-1]])
                                 break
                             elif ohlc['close'].iat[j] < position_not_to_break:
                                 break
@@ -346,7 +337,7 @@ class smc:
                                 else:
                                     weak[last_positions[-1]] = ohlc["high"].iloc[j:].idxmax()
                                 last_position = 'high'
-                                #print('BOS', 1.0, swing_highs_lows['start_date'][last_positions[-1]])
+                                # print('BOS', 1.0, swing_highs_lows['start_date'][last_positions[-1]])
                                 break
                             elif ohlc['close'].iat[j] < position_not_to_break:
                                 break
@@ -371,7 +362,7 @@ class smc:
                                 else:
                                     weak[last_positions[-1]] = ohlc["low"].iloc[j:].idxmin()
                                 last_position = 'low'
-                                #print('CHOCH', -1.0, swing_highs_lows['start_date'][last_positions[-1]])
+                                # print('CHOCH', -1.0, swing_highs_lows['start_date'][last_positions[-1]])
                                 break
                             elif ohlc['close'].iat[j] > position_not_to_break:
                                 break
@@ -396,7 +387,7 @@ class smc:
                                 else:
                                     weak[last_positions[-1]] = ohlc["low"].iloc[j:].idxmin()
                                 last_position = 'low'
-                                #print('BOS', -1.0, swing_highs_lows['start_date'][last_positions[-1]])
+                                # print('BOS', -1.0, swing_highs_lows['start_date'][last_positions[-1]])
                                 break
                             elif ohlc['close'].iat[j] > position_not_to_break:
                                 break
@@ -405,7 +396,7 @@ class smc:
 
         # remove the ones that aren't broken
         for i in np.where(
-            np.logical_and(np.logical_or(bos != 0, choch != 0), broken == 0)
+                np.logical_and(np.logical_or(bos != 0, choch != 0), broken == 0)
         )[0]:
             bos[i] = 0
             choch[i] = 0
@@ -440,10 +431,10 @@ class smc:
 
     @classmethod
     def ob(
-        cls,
-        ohlc: DataFrame,
-        swing_highs_lows: DataFrame,
-        close_mitigation: bool = False,
+            cls,
+            ohlc: DataFrame,
+            swing_highs_lows: DataFrame,
+            close_mitigation: bool = False,
     ) -> Series:
         """
         OB - Order Blocks
@@ -505,7 +496,7 @@ class smc:
                         active_bullish.remove(idx)
                 else:
                     if ((not close_mitigation and _low[close_index] < bottom_arr[idx])
-                        or (close_mitigation and min(_open[close_index], _close[close_index]) < bottom_arr[idx])):
+                            or (close_mitigation and min(_open[close_index], _close[close_index]) < bottom_arr[idx])):
                         breaker[idx] = True
                         mitigated_index[idx] = close_index - 1
 
@@ -568,7 +559,7 @@ class smc:
                         active_bearish.remove(idx)
                 else:
                     if ((not close_mitigation and _high[close_index] > top_arr[idx])
-                        or (close_mitigation and max(_open[close_index], _close[close_index]) > top_arr[idx])):
+                            or (close_mitigation and max(_open[close_index], _close[close_index]) > top_arr[idx])):
                         breaker[idx] = True
                         mitigated_index[idx] = close_index
 
@@ -656,7 +647,7 @@ class smc:
         # Work on a copy so the original is not modified.
         shl = swing_highs_lows.copy()
         n = len(ohlc)
-        
+
         # Calculate the pip range based on the overall high-low range.
         pip_range = (ohlc["high"].max() - ohlc["low"].min()) * range_percent
 
@@ -814,7 +805,7 @@ class smc:
                 currently_broken_low = False
                 last_broken_time = resampled_previous_index
 
-            previous_high[i] = resampled_ohlc["high"].iloc[resampled_previous_index] 
+            previous_high[i] = resampled_ohlc["high"].iloc[resampled_previous_index]
             previous_low[i] = resampled_ohlc["low"].iloc[resampled_previous_index]
             currently_broken_high = ohlc["high"].iloc[i] > previous_high[i] or currently_broken_high
             currently_broken_low = ohlc["low"].iloc[i] < previous_low[i] or currently_broken_low
@@ -830,12 +821,12 @@ class smc:
 
     @classmethod
     def sessions(
-        cls,
-        ohlc: DataFrame,
-        session: str,
-        start_time: str = "",
-        end_time: str = "",
-        time_zone: str = "UTC",
+            cls,
+            ohlc: DataFrame,
+            session: str,
+            start_time: str = "",
+            end_time: str = "",
+            time_zone: str = "UTC",
     ) -> Series:
         """
         Sessions
@@ -920,8 +911,8 @@ class smc:
             # convert current time to the second of the day
             current_time = datetime.strptime(current_time, "%H:%M")
             if (start_time < end_time and start_time <= current_time <= end_time) or (
-                start_time >= end_time
-                and (start_time <= current_time or current_time <= end_time)
+                    start_time >= end_time
+                    and (start_time <= current_time or current_time <= end_time)
             ):
                 active[i] = 1
                 high[i] = max(ohlc["high"].iloc[i], high[i - 1] if i > 0 else 0)
