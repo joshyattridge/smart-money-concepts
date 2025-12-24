@@ -80,7 +80,7 @@ class smc:
             ),
             np.where(ohlc["close"] > ohlc["open"], 1, -1),
             np.nan,
-        )
+        ).copy()  # Make writeable for in-place modifications
 
         top = np.where(
             ~np.isnan(fvg),
@@ -90,7 +90,7 @@ class smc:
                 ohlc["low"].shift(1),
             ),
             np.nan,
-        )
+        ).copy()  # Make writeable for in-place modifications
 
         bottom = np.where(
             ~np.isnan(fvg),
@@ -100,7 +100,7 @@ class smc:
                 ohlc["high"].shift(-1),
             ),
             np.nan,
-        )
+        ).copy()  # Make writeable for in-place modifications
 
         # if there are multiple consecutive fvg then join them together using the highest top and lowest bottom and the last index
         if join_consecutive:
@@ -160,7 +160,7 @@ class smc:
                 -1,
                 np.nan,
             ),
-        )
+        ).copy()  # Make writeable for in-place modifications
 
         while True:
             positions = np.where(~np.isnan(swing_highs_lows))[0]
