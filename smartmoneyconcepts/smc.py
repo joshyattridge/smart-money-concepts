@@ -251,6 +251,90 @@ class smc:
 
         swing_highs_lows = swing_highs_lows.copy()
 
+        last_valid_idx = swing_highs_lows["HighLow"].last_valid_index()
+
+        if last_valid_idx is not None and last_valid_idx < len(ohlc) - 2:
+            last_type = swing_highs_lows.at[last_valid_idx, "HighLow"]
+            last_level = swing_highs_lows.at[last_valid_idx, "Level"]
+
+            # Using integer indexing for numpy arrays for speed and consistency
+            closes = ohlc['close'].values[last_valid_idx + 1:]
+
+            if last_type == 1:  # Last confirmed was High (Resistance)
+                # Check for Bullish Break (BOS or CHoCH)
+                if close_break:
+                    break_indices = np.where(closes > last_level)[0]
+                else:
+                    highs_check = ohlc['high'].values[last_valid_idx + 1:]
+                    break_indices = np.where(highs_check > last_level)[0]
+
+                if len(break_indices) > 0:
+                    break_local_idx = break_indices[0]
+                    break_global_idx = last_valid_idx + 1 + break_local_idx
+
+                    # We broke the High, so we assume there was a Low in between.
+                    # Find the lowest point between the last High and the Break
+                    search_slice = ohlc['low'].values[last_valid_idx + 1: break_global_idx + 1]
+                    if len(search_slice) > 0:
+                        min_low = np.min(search_slice)
+                        min_local_idx = np.argmin(search_slice)
+                        min_global_idx = last_valid_idx + 1 + min_local_idx
+
+                        # INJECT SWING LOW
+                        # Use .at with the DataFrame index to support both RangeIndex and DateTimeIndex
+                        idx_at_min = swing_highs_lows.index[min_global_idx]
+                        swing_highs_lows.at[idx_at_min, 'HighLow'] = -1
+                        swing_highs_lows.at[idx_at_min, 'Level'] = min_low
+
+                        # Determine Label (HL or LL)
+                        prev_lows = swing_highs_lows[swing_highs_lows['HighLow'] == -1]
+                        # Filter to ensure we look at past lows only
+                        prev_lows = prev_lows[prev_lows.index < idx_at_min]
+
+                        if not prev_lows.empty:
+                            prev_low_level = prev_lows.iloc[-1]['Level']
+                            label = 'HL' if min_low > prev_low_level else 'LL'
+                        else:
+                            label = 'LL'
+
+                        swing_highs_lows.at[idx_at_min, 'Label'] = label
+
+            elif last_type == -1:  # Last confirmed was Low (Support)
+                # Check for Bearish Break
+                if close_break:
+                    break_indices = np.where(closes < last_level)[0]
+                else:
+                    lows_check = ohlc['low'].values[last_valid_idx + 1:]
+                    break_indices = np.where(lows_check < last_level)[0]
+
+                if len(break_indices) > 0:
+                    break_local_idx = break_indices[0]
+                    break_global_idx = last_valid_idx + 1 + break_local_idx
+
+                    # We broke the Low, so we assume there was a High in between.
+                    search_slice = ohlc['high'].values[last_valid_idx + 1: break_global_idx + 1]
+                    if len(search_slice) > 0:
+                        max_high = np.max(search_slice)
+                        max_local_idx = np.argmax(search_slice)
+                        max_global_idx = last_valid_idx + 1 + max_local_idx
+
+                        # INJECT SWING HIGH
+                        idx_at_max = swing_highs_lows.index[max_global_idx]
+                        swing_highs_lows.at[idx_at_max, 'HighLow'] = 1
+                        swing_highs_lows.at[idx_at_max, 'Level'] = max_high
+
+                        # Determine Label (HH or LH)
+                        prev_highs = swing_highs_lows[swing_highs_lows['HighLow'] == 1]
+                        prev_highs = prev_highs[prev_highs.index < idx_at_max]
+
+                        if not prev_highs.empty:
+                            prev_high_level = prev_highs.iloc[-1]['Level']
+                            label = 'HH' if max_high > prev_high_level else 'LH'
+                        else:
+                            label = 'HH'
+
+                        swing_highs_lows.at[idx_at_max, 'Label'] = label
+
         level_order = []
         highs_lows_order = []
         labels = []
