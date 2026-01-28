@@ -372,7 +372,6 @@ class smc:
                     else:
                         next_swing_high_low = len(swing_highs_lows["HighLow"]) - 1
 
-                    next_swing_high_low_date = swing_highs_lows['start_date'][next_swing_high_low]
                     position_to_break = level_order[-2]
                     position_not_to_break = level_order[-1]
 
@@ -391,12 +390,11 @@ class smc:
                                 level[last_positions[-1]] = position_to_break
                                 strong[last_positions[-1]] = ohlc["low"].iloc[i:j].idxmin()
                                 broken[last_positions[-1]] = j
-                                if next_swing_high_low:
-                                    weak[last_positions[-1]] = next_swing_high_low
-                                else:
-                                    weak[last_positions[-1]] = ohlc["high"].iloc[j:].idxmax()
+
+                                # FIX: Search for the actual high in the range
+                                weak[last_positions[-1]] = ohlc["high"].iloc[j: next_swing_high_low + 1].idxmax()
+
                                 last_position = 'high'
-                                # print('CHOCH', 1.0, swing_highs_lows['start_date'][last_positions[-1]])
                                 break
                             elif ohlc['close'].iat[j] < position_not_to_break:
                                 break
@@ -416,12 +414,11 @@ class smc:
                                 level[last_positions[-1]] = position_to_break
                                 strong[last_positions[-1]] = ohlc["low"].iloc[i:j].idxmin()
                                 broken[last_positions[-1]] = j
-                                if next_swing_high_low:
-                                    weak[last_positions[-1]] = next_swing_high_low
-                                else:
-                                    weak[last_positions[-1]] = ohlc["high"].iloc[j:].idxmax()
+
+                                # FIX: Search for the actual high in the range
+                                weak[last_positions[-1]] = ohlc["high"].iloc[j: next_swing_high_low + 1].idxmax()
+
                                 last_position = 'high'
-                                # print('BOS', 1.0, swing_highs_lows['start_date'][last_positions[-1]])
                                 break
                             elif ohlc['close'].iat[j] < position_not_to_break:
                                 break
@@ -441,12 +438,11 @@ class smc:
                                 level[last_positions[-1]] = position_to_break
                                 strong[last_positions[-1]] = ohlc["high"].iloc[i:j].idxmax()
                                 broken[last_positions[-1]] = j
-                                if next_swing_high_low:
-                                    weak[last_positions[-1]] = next_swing_high_low
-                                else:
-                                    weak[last_positions[-1]] = ohlc["low"].iloc[j:].idxmin()
+
+                                # FIX: Search for the actual low in the range
+                                weak[last_positions[-1]] = ohlc["low"].iloc[j: next_swing_high_low + 1].idxmin()
+
                                 last_position = 'low'
-                                # print('CHOCH', -1.0, swing_highs_lows['start_date'][last_positions[-1]])
                                 break
                             elif ohlc['close'].iat[j] > position_not_to_break:
                                 break
@@ -466,12 +462,11 @@ class smc:
                                 level[last_positions[-1]] = position_to_break
                                 strong[last_positions[-1]] = ohlc["high"].iloc[i:j].idxmax()
                                 broken[last_positions[-1]] = j
-                                if next_swing_high_low:
-                                    weak[last_positions[-1]] = next_swing_high_low
-                                else:
-                                    weak[last_positions[-1]] = ohlc["low"].iloc[j:].idxmin()
+
+                                # FIX: Search for the actual low in the range
+                                weak[last_positions[-1]] = ohlc["low"].iloc[j: next_swing_high_low + 1].idxmin()
+
                                 last_position = 'low'
-                                # print('BOS', -1.0, swing_highs_lows['start_date'][last_positions[-1]])
                                 break
                             elif ohlc['close'].iat[j] > position_not_to_break:
                                 break
