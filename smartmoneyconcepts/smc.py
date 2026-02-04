@@ -698,7 +698,7 @@ class smc:
         return pd.concat([liq_series, level_series, end_series, swept_series], axis=1)
 
     @classmethod
-    def previous_high_low(cls, ohlc: DataFrame, time_frame: str = "1D") -> Series:
+    def previous_high_low(cls, ohlc: DataFrame, time_frame: str = "1D") -> DataFrame:
         """
         Previous High Low
         This method returns the previous high and low of the given time frame.
@@ -712,56 +712,83 @@ class smc:
         BrokenHigh = 1 once price has broken the previous high of the timeframe, 0 otherwise
         BrokenLow = 1 once price has broken the previous low of the timeframe, 0 otherwise
         """
-
+        ohlc = ohlc.copy()
         ohlc.index = pd.to_datetime(ohlc.index)
+        n = len(ohlc)
 
-        previous_high = np.zeros(len(ohlc), dtype=np.float32)
-        previous_low = np.zeros(len(ohlc), dtype=np.float32)
-        broken_high = np.zeros(len(ohlc), dtype=np.int32)
-        broken_low = np.zeros(len(ohlc), dtype=np.int32)
+        # Resample to target timeframe
+        resampled = ohlc.resample(time_frame).agg({
+            "open": "first",
+            "high": "max",
+            "low": "min",
+            "close": "last",
+            "volume": "sum"
+        }).dropna()
 
-        resampled_ohlc = ohlc.resample(time_frame).agg(
-            {
-                "open": "first",
-                "high": "max",
-                "low": "min",
-                "close": "last",
-                "volume": "sum",
-            }
-        ).dropna()
+        # Edge case: not enough resampled periods
+        if len(resampled) < 2:
+            return pd.concat([
+                pd.Series(np.full(n, np.nan, dtype=np.float32), name="PreviousHigh"),
+                pd.Series(np.full(n, np.nan, dtype=np.float32), name="PreviousLow"),
+                pd.Series(np.zeros(n, dtype=np.int32), name="BrokenHigh"),
+                pd.Series(np.zeros(n, dtype=np.int32), name="BrokenLow"),
+            ], axis=1)
 
-        currently_broken_high = False
-        currently_broken_low = False
-        last_broken_time = None
-        for i in range(len(ohlc)):
-            resampled_previous_index = np.where(
-                resampled_ohlc.index < ohlc.index[i]
-            )[0]
-            if len(resampled_previous_index) <= 1:
-                previous_high[i] = np.nan
-                previous_low[i] = np.nan
-                continue
-            resampled_previous_index = resampled_previous_index[-2]
+        resampled_times = resampled.index.values
+        resampled_highs = resampled["high"].values
+        resampled_lows = resampled["low"].values
+        candle_times = ohlc.index.values
 
-            if last_broken_time != resampled_previous_index:
-                currently_broken_high = False
-                currently_broken_low = False
-                last_broken_time = resampled_previous_index
+        # For each candle, find how many resampled periods have start time < candle time
+        # This is equivalent to: len(np.where(resampled_times < candle_time)[0])
+        periods_before = np.searchsorted(resampled_times, candle_times, side='left')
 
-            previous_high[i] = resampled_ohlc["high"].iloc[resampled_previous_index] 
-            previous_low[i] = resampled_ohlc["low"].iloc[resampled_previous_index]
-            currently_broken_high = ohlc["high"].iloc[i] > previous_high[i] or currently_broken_high
-            currently_broken_low = ohlc["low"].iloc[i] < previous_low[i] or currently_broken_low
-            broken_high[i] = 1 if currently_broken_high else 0
-            broken_low[i] = 1 if currently_broken_low else 0
+        # Original takes second-to-last: indices[-2] = periods_before - 2
+        prev_period_idx = periods_before - 2
 
-        previous_high = pd.Series(previous_high, name="PreviousHigh")
-        previous_low = pd.Series(previous_low, name="PreviousLow")
-        broken_high = pd.Series(broken_high, name="BrokenHigh")
-        broken_low = pd.Series(broken_low, name="BrokenLow")
+        # Valid only if more than 1 period before (original: len > 1, i.e., >= 2 periods)
+        valid_mask = periods_before > 1
 
-        return pd.concat([previous_high, previous_low, broken_high, broken_low], axis=1)
+        # Initialize output arrays
+        previous_high = np.full(n, np.nan, dtype=np.float32)
+        previous_low = np.full(n, np.nan, dtype=np.float32)
 
+        # Fill valid entries
+        valid_indices = np.where(valid_mask)[0]
+        if len(valid_indices) > 0:
+            lookup_indices = prev_period_idx[valid_indices]
+            previous_high[valid_indices] = resampled_highs[lookup_indices]
+            previous_low[valid_indices] = resampled_lows[lookup_indices]
+
+        # Group candles by their reference period for cumulative broken tracking
+        # Original resets broken flags when the reference period changes
+        group_changes = np.concatenate([[True], prev_period_idx[1:] != prev_period_idx[:-1]])
+        group_id = np.cumsum(group_changes)
+
+        ohlc_high = ohlc["high"].values
+        ohlc_low = ohlc["low"].values
+
+        # Compute cumulative max/min within each group
+        df_temp = pd.DataFrame({
+            'group': group_id,
+            'high': ohlc_high,
+            'low': ohlc_low,
+        })
+
+        cummax_high = df_temp.groupby('group')['high'].cummax().values
+        cummin_low = df_temp.groupby('group')['low'].cummin().values
+
+        # Broken = 1 if cumulative high > previous_high (or cummin < previous_low)
+        broken_high = np.where(valid_mask & (cummax_high > previous_high), 1, 0).astype(np.int32)
+        broken_low = np.where(valid_mask & (cummin_low < previous_low), 1, 0).astype(np.int32)
+
+        return pd.concat([
+            pd.Series(previous_high, name="PreviousHigh"),
+            pd.Series(previous_low, name="PreviousLow"),
+            pd.Series(broken_high, name="BrokenHigh"),
+            pd.Series(broken_low, name="BrokenLow"),
+        ], axis=1)
+    
     @classmethod
     def sessions(
         cls,
