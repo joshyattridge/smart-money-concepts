@@ -220,7 +220,7 @@ class smc:
 
     @classmethod
     def bos_choch(
-        cls, ohlc: DataFrame, swing_highs_lows: DataFrame, close_break: bool = True
+            cls, ohlc: DataFrame, swing_highs_lows: DataFrame, close_break: bool = True
     ) -> Series:
         """
         BOS - Break of Structure
@@ -235,6 +235,8 @@ class smc:
         BOS = 1 if bullish break of structure, -1 if bearish break of structure
         CHOCH = 1 if bullish change of character, -1 if bearish change of character
         Level = the level of the break of structure or change of character
+        Strong = the index of the candle that initiated the break
+        Weak = the index of the candle that was broken
         BrokenIndex = the index of the candle that broke the level
         """
 
@@ -246,6 +248,7 @@ class smc:
         bos = np.zeros(len(ohlc), dtype=np.int32)
         choch = np.zeros(len(ohlc), dtype=np.int32)
         level = np.zeros(len(ohlc), dtype=np.float32)
+        weak = np.zeros(len(ohlc), dtype=np.float32)
 
         last_positions = []
 
@@ -258,119 +261,124 @@ class smc:
                     bos[last_positions[-2]] = (
                         1
                         if (
-                            np.all(highs_lows_order[-4:] == [-1, 1, -1, 1])
-                            and np.all(
-                                level_order[-4]
-                                < level_order[-2]
-                                < level_order[-3]
-                                < level_order[-1]
-                            )
+                                np.all(highs_lows_order[-4:] == [-1, 1, -1, 1])
+                                and np.all(
+                            level_order[-4]
+                            < level_order[-2]
+                            < level_order[-3]
+                            < level_order[-1]
+                        )
                         )
                         else 0
                     )
                     level[last_positions[-2]] = (
                         level_order[-3] if bos[last_positions[-2]] != 0 else 0
                     )
+                    # Weak index is the index of the level being broken
+                    if bos[last_positions[-2]] != 0:
+                        weak[last_positions[-2]] = last_positions[-3]
 
                     # bearish bos
-                    bos[last_positions[-2]] = (
-                        -1
-                        if (
+                    if (
                             np.all(highs_lows_order[-4:] == [1, -1, 1, -1])
                             and np.all(
-                                level_order[-4]
-                                > level_order[-2]
-                                > level_order[-3]
-                                > level_order[-1]
-                            )
-                        )
-                        else bos[last_positions[-2]]
+                        level_order[-4]
+                        > level_order[-2]
+                        > level_order[-3]
+                        > level_order[-1]
                     )
-                    level[last_positions[-2]] = (
-                        level_order[-3] if bos[last_positions[-2]] != 0 else 0
-                    )
+                    ):
+                        bos[last_positions[-2]] = -1
+                        level[last_positions[-2]] = level_order[-3]
+                        weak[last_positions[-2]] = last_positions[-3]
 
                     # bullish choch
-                    choch[last_positions[-2]] = (
-                        1
-                        if (
+                    if (
                             np.all(highs_lows_order[-4:] == [-1, 1, -1, 1])
                             and np.all(
-                                level_order[-1]
-                                > level_order[-3]
-                                > level_order[-4]
-                                > level_order[-2]
-                            )
-                        )
-                        else 0
+                        level_order[-1]
+                        > level_order[-3]
+                        > level_order[-4]
+                        > level_order[-2]
                     )
-                    level[last_positions[-2]] = (
-                        level_order[-3]
-                        if choch[last_positions[-2]] != 0
-                        else level[last_positions[-2]]
-                    )
+                    ):
+                        choch[last_positions[-2]] = 1
+                        level[last_positions[-2]] = level_order[-3]
+                        weak[last_positions[-2]] = last_positions[-3]
 
                     # bearish choch
-                    choch[last_positions[-2]] = (
-                        -1
-                        if (
+                    if (
                             np.all(highs_lows_order[-4:] == [1, -1, 1, -1])
                             and np.all(
-                                level_order[-1]
-                                < level_order[-3]
-                                < level_order[-4]
-                                < level_order[-2]
-                            )
-                        )
-                        else choch[last_positions[-2]]
+                        level_order[-1]
+                        < level_order[-3]
+                        < level_order[-4]
+                        < level_order[-2]
                     )
-                    level[last_positions[-2]] = (
-                        level_order[-3]
-                        if choch[last_positions[-2]] != 0
-                        else level[last_positions[-2]]
-                    )
+                    ):
+                        choch[last_positions[-2]] = -1
+                        level[last_positions[-2]] = level_order[-3]
+                        weak[last_positions[-2]] = last_positions[-3]
 
                 last_positions.append(i)
 
         broken = np.zeros(len(ohlc), dtype=np.int32)
+        strong = np.zeros(len(ohlc), dtype=np.float32)
+
         for i in np.where(np.logical_or(bos != 0, choch != 0))[0]:
             mask = np.zeros(len(ohlc), dtype=np.bool_)
-            # if the bos is 1 then check if the candles high has gone above the level
+            # if the bos is 1 then check if the candles close/high has gone above the level
             if bos[i] == 1 or choch[i] == 1:
-                mask = ohlc["close" if close_break else "high"][i + 2 :] > level[i]
-            # if the bos is -1 then check if the candles low has gone below the level
+                mask = ohlc["close" if close_break else "high"][i + 2:] > level[i]
+            # if the bos is -1 then check if the candles close/low has gone below the level
             elif bos[i] == -1 or choch[i] == -1:
-                mask = ohlc["close" if close_break else "low"][i + 2 :] < level[i]
+                mask = ohlc["close" if close_break else "low"][i + 2:] < level[i]
+
             if np.any(mask):
                 j = np.argmax(mask) + i + 2
                 broken[i] = j
-                # if there are any unbroken bos or choch that started before this one and ended after this one then remove them
+
+                # Calculate Strong index (the extreme point between the signal and the break)
+                if bos[i] == 1 or choch[i] == 1:
+                    strong[i] = ohlc["low"].iloc[i:j].idxmin()
+                else:
+                    strong[i] = ohlc["high"].iloc[i:j].idxmax()
+
+                # remove the ones that aren't broken or overlap
                 for k in np.where(np.logical_or(bos != 0, choch != 0))[0]:
                     if k < i and broken[k] >= j:
                         bos[k] = 0
                         choch[k] = 0
                         level[k] = 0
+                        weak[k] = 0
+                        strong[k] = 0
 
         # remove the ones that aren't broken
         for i in np.where(
-            np.logical_and(np.logical_or(bos != 0, choch != 0), broken == 0)
+                np.logical_and(np.logical_or(bos != 0, choch != 0), broken == 0)
         )[0]:
             bos[i] = 0
             choch[i] = 0
             level[i] = 0
+            weak[i] = 0
+            strong[i] = 0
 
         # replace all the 0s with np.nan
         bos = np.where(bos != 0, bos, np.nan)
         choch = np.where(choch != 0, choch, np.nan)
         level = np.where(level != 0, level, np.nan)
+        strong = np.where(strong != 0, strong, np.nan)
+        weak = np.where(weak != 0, weak, np.nan)
         broken = np.where(broken != 0, broken, np.nan)
 
-        bos = pd.Series(bos, name="BOS")
-        choch = pd.Series(choch, name="CHOCH")
-        level = pd.Series(level, name="Level")
-        broken = pd.Series(broken, name="BrokenIndex")
-
-        return pd.concat([bos, choch, level, broken], axis=1)
+        return pd.concat([
+            pd.Series(bos, name="BOS"),
+            pd.Series(choch, name="CHOCH"),
+            pd.Series(level, name="Level"),
+            pd.Series(strong, name="Strong"),
+            pd.Series(weak, name="Weak"),
+            pd.Series(broken, name="BrokenIndex")
+        ], axis=1)
 
     @classmethod
     def ob(
