@@ -53,7 +53,7 @@ class smc:
     __version__ = "0.0.26"
 
     @classmethod
-    def fvg(cls, ohlc: DataFrame, join_consecutive=False) -> Series:
+    def fvg(cls, ohlc: DataFrame, join_consecutive=False, causal=False) -> Series:
         """
         FVG - Fair Value Gap
         A fair value gap is when the previous high is lower than the next low if the current candle is bullish.
@@ -61,6 +61,9 @@ class smc:
 
         parameters:
         join_consecutive: bool - if there are multiple FVG in a row then they will be merged into one using the highest top and the lowest bottom
+        causal: bool - if True, shift outputs forward by 1 bar to prevent lookahead bias.
+                       The FVG detection uses the next bar's high/low, so setting causal=True
+                       delays the signal until it would realistically be known.
 
         returns:
         FVG = 1 if bullish fair value gap, -1 if bearish fair value gap
@@ -80,7 +83,7 @@ class smc:
             ),
             np.where(ohlc["close"] > ohlc["open"], 1, -1),
             np.nan,
-        )
+        ).copy()  # Make writeable for in-place modifications
 
         top = np.where(
             ~np.isnan(fvg),
@@ -90,7 +93,7 @@ class smc:
                 ohlc["low"].shift(1),
             ),
             np.nan,
-        )
+        ).copy()  # Make writeable for in-place modifications
 
         bottom = np.where(
             ~np.isnan(fvg),
@@ -100,7 +103,7 @@ class smc:
                 ohlc["high"].shift(-1),
             ),
             np.nan,
-        )
+        ).copy()  # Make writeable for in-place modifications
 
         # if there are multiple consecutive fvg then join them together using the highest top and lowest bottom and the last index
         if join_consecutive:
@@ -123,6 +126,17 @@ class smc:
 
         mitigated_index = np.where(np.isnan(fvg), np.nan, mitigated_index)
 
+        # Apply causal shift to prevent lookahead bias
+        if causal:
+            fvg = np.roll(fvg, 1)
+            fvg[0] = np.nan
+            top = np.roll(top, 1)
+            top[0] = np.nan
+            bottom = np.roll(bottom, 1)
+            bottom[0] = np.nan
+            mitigated_index = np.roll(mitigated_index, 1)
+            mitigated_index[0] = np.nan
+
         return pd.concat(
             [
                 pd.Series(fvg, name="FVG"),
@@ -134,7 +148,7 @@ class smc:
         )
 
     @classmethod
-    def swing_highs_lows(cls, ohlc: DataFrame, swing_length: int = 50) -> Series:
+    def swing_highs_lows(cls, ohlc: DataFrame, swing_length: int = 50, causal=False) -> Series:
         """
         Swing Highs and Lows
         A swing high is when the current high is the highest high out of the swing_length amount of candles before and after.
@@ -142,12 +156,17 @@ class smc:
 
         parameters:
         swing_length: int - the amount of candles to look back and forward to determine the swing high or low
+        causal: bool - if True, shift outputs forward by swing_length bars to prevent lookahead bias.
+                       The detection looks forward by swing_length bars, so setting causal=True
+                       delays the signal until it would realistically be known.
 
         returns:
         HighLow = 1 if swing high, -1 if swing low
         Level = the level of the swing high or low
         """
 
+        # Store original swing_length for causal shift before doubling
+        original_swing_length = swing_length
         swing_length *= 2
         # set the highs to 1 if the current high is the highest high in the last 5 candles and next 5 candles
         swing_highs_lows = np.where(
@@ -160,7 +179,7 @@ class smc:
                 -1,
                 np.nan,
             ),
-        )
+        ).copy()  # Make writeable for in-place modifications
 
         while True:
             positions = np.where(~np.isnan(swing_highs_lows))[0]
@@ -209,6 +228,14 @@ class smc:
             np.where(swing_highs_lows == 1, ohlc["high"], ohlc["low"]),
             np.nan,
         )
+
+        # Apply causal shift to prevent lookahead bias
+        if causal:
+            shift_amount = original_swing_length
+            swing_highs_lows = np.roll(swing_highs_lows, shift_amount)
+            swing_highs_lows[:shift_amount] = np.nan
+            level = np.roll(level, shift_amount)
+            level[:shift_amount] = np.nan
 
         return pd.concat(
             [
