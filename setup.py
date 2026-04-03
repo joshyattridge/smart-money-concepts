@@ -2,7 +2,7 @@ from setuptools import setup
 import codecs
 import os
 
-VERSION = "0.0.26"
+VERSION = "0.0.27"
 DESCRIPTION = "Getting indicators based on smart money concepts or ICT"
 
 # read the contents of the README file
