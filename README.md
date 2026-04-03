@@ -63,6 +63,41 @@ returns:<br>
 HighLow = 1 if swing high, -1 if swing low<br>
 Level = the level of the swing high or low<br>
 
+## Example (swing_highs_lows)
+```python
+import smartmoneyconcepts.smc as smc
+import MetaTrader5 as mt5
+import pandas as pd
+from datetime import datetime 
+
+#Import price data from mt5
+mt5.symbol_select(symbol, True)
+rates = mt5.copy_rates_from(symbol, timeframe, datetime.now(), bars)
+mt5.shutdown()
+
+# Format the price data
+df = pd.DataFrame(rates)
+df['time'] = pd.to_datetime(df['time'], unit='s')
+ohlc = df[['open','high','low','close']]
+
+# Use swing high/lows
+swings = smc.swing_highs_lows(ohlc, swing_length=5)
+df[['swing', 'price_level']] = swings
+
+print(swings)
+
+
+#### Example Output:
+
+| HighLow | Level   |
+|---------|---------|
+| -1.0    | 1.15975 |
+| NaN     | NaN     |
+| 1.0     | 1.6175  |
+| NaN     | NaN     |
+| NaN     | NaN     |
+```
+
 ### Break of Structure (BOS) & Change of Character (CHoCH)
 
 ```python
