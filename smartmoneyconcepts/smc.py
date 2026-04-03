@@ -933,8 +933,9 @@ class smc:
                 direction[i] = direction[i - 1] if i > 0 else 0
 
             if direction[i - 1] == 1:
+                divisor = top - bottom
                 current_retracement[i] = round(
-                    100 - (((ohlc["low"].iloc[i] - bottom) / (top - bottom)) * 100), 1
+                    100 - (((ohlc["low"].iloc[i] - bottom) / divisor) * 100) if divisor != 0 else 0, 1
                 )
                 deepest_retracement[i] = max(
                     (
@@ -945,8 +946,9 @@ class smc:
                     current_retracement[i],
                 )
             if direction[i] == -1:
+                divisor = bottom - top
                 current_retracement[i] = round(
-                    100 - ((ohlc["high"].iloc[i] - top) / (bottom - top)) * 100, 1
+                    100 - ((ohlc["high"].iloc[i] - top) / divisor) * 100 if divisor != 0 else 0, 1
                 )
                 deepest_retracement[i] = max(
                     (
