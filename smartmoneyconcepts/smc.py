@@ -137,30 +137,46 @@ class smc:
     def swing_highs_lows(cls, ohlc: DataFrame, swing_length: int = 50) -> Series:
         """
         Swing Highs and Lows
-        A swing high is when the current high is the highest high out of the swing_length amount of candles before and after.
-        A swing low is when the current low is the lowest low out of the swing_length amount of candles before and after.
+        A swing high is when the high at a candidate bar is the highest high in the
+        lookback window AND is confirmed by subsequent bars being lower.
+        A swing low is when the low at a candidate bar is the lowest low in the
+        lookback window AND is confirmed by subsequent bars being higher.
+
+        This uses a confirm-bars approach to avoid look-ahead bias. The candidate
+        bar must be the extreme in the past ``swing_length`` bars, then confirmed
+        by ``swing_length`` subsequent bars all being less extreme.
 
         parameters:
-        swing_length: int - the amount of candles to look back and forward to determine the swing high or low
+        swing_length: int - the number of candles used for both lookback and confirmation
 
         returns:
         HighLow = 1 if swing high, -1 if swing low
         Level = the level of the swing high or low
         """
 
-        swing_length *= 2
-        # set the highs to 1 if the current high is the highest high in the last 5 candles and next 5 candles
-        swing_highs_lows = np.where(
-            ohlc["high"]
-            == ohlc["high"].shift(-(swing_length // 2)).rolling(swing_length).max(),
-            1,
-            np.where(
-                ohlc["low"]
-                == ohlc["low"].shift(-(swing_length // 2)).rolling(swing_length).min(),
-                -1,
-                np.nan,
-            ),
-        )
+        highs = ohlc["high"].values
+        lows = ohlc["low"].values
+        n = len(ohlc)
+        confirm_bars = swing_length
+        lookback = swing_length
+
+        swing_highs_lows = np.full(n, np.nan)
+
+        for i in range(lookback + confirm_bars, n):
+            candidate = i - confirm_bars
+            # Lookback window: [candidate - lookback, candidate] inclusive
+            high_window = highs[candidate - lookback : candidate + 1]
+            low_window = lows[candidate - lookback : candidate + 1]
+
+            # Check swing high: candidate is highest in lookback, confirmed by lower highs after
+            if highs[candidate] == high_window.max():
+                if all(highs[candidate + j] < highs[candidate] for j in range(1, confirm_bars + 1)):
+                    swing_highs_lows[i] = 1
+
+            # Check swing low: candidate is lowest in lookback, confirmed by higher lows after
+            if lows[candidate] == low_window.min():
+                if all(lows[candidate + j] > lows[candidate] for j in range(1, confirm_bars + 1)):
+                    swing_highs_lows[i] = -1
 
         while True:
             positions = np.where(~np.isnan(swing_highs_lows))[0]
