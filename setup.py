@@ -2,8 +2,8 @@ from setuptools import setup
 import codecs
 import os
 
-VERSION = "0.0.27"
-DESCRIPTION = "Getting indicators based on smart money concepts or ICT"
+VERSION = '0.0.21'
+DESCRIPTION = 'Getting indicators based on smart money concepts or ICT'
 
 # read the contents of the README file
 with codecs.open("README.md", encoding="utf-8") as f:
@@ -18,7 +18,7 @@ setup(
     long_description_content_type="text/markdown",
     long_description=LONG_DESCRIPTION,
     packages=["smartmoneyconcepts"],
-    install_requires=["pandas>=2.0.2", "numpy>=1.24.3", "numba>=0.58.1"],
+    install_requires=["pandas==2.0.2", "numpy==1.24.3", "numba==0.59.1"],
     keywords=[
         "smart",
         "money",

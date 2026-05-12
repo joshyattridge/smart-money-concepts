@@ -1,0 +1,126 @@
+2026-05-12 10:49:06,728 - INFO - Successfully fetched 100 recent candles for ['1m', '5m', '15m', '1h'].
+2026-05-12 10:49:06,774 - INFO - Candle closed at OHLC: [80695.9000, 80695.9000, 80695.9000, 80695.9000]
+2026-05-12 10:49:06,823 - INFO - [DIAGNOSTIC] Math logic found: MSS=0, FVG=1, OB=0
+2026-05-12 10:49:06,827 - INFO - [DIAGNOSTIC] AI Model predicted: MSS=0, FVG=0, OB=0
+2026-05-12 10:49:06,952 - INFO - Checking for Mandatory Market Structure Shift (MSS)...
+2026-05-12 10:49:06,954 - INFO - Not Detected. Mandatory MSS missing.
+2026-05-12 10:49:06,955 - INFO - Starting analysis cycle for ETH/USDT on 1m timeframe.
+2026-05-12 10:49:11,591 - INFO - Successfully fetched 100 recent candles for ['1m', '5m', '15m', '1h'].
+2026-05-12 10:49:11,625 - INFO - Candle closed at OHLC: [2285.9100, 2285.9100, 2285.9100, 2285.9100]
+2026-05-12 10:49:11,674 - INFO - [DIAGNOSTIC] Math logic found: MSS=0, FVG=1, OB=0
+2026-05-12 10:49:11,676 - INFO - [DIAGNOSTIC] AI Model predicted: MSS=0, FVG=0, OB=0
+2026-05-12 10:49:11,774 - INFO - Checking for Mandatory Market Structure Shift (MSS)...
+2026-05-12 10:49:11,775 - INFO - Not Detected. Mandatory MSS missing.
+2026-05-12 10:49:11,776 - INFO - Syncing to clock: Sleeping for 50.2 seconds until next 1m candle closes...
+2026-05-12 10:49:12,517 - INFO - Loaded trained AI model and global scaler from models
+2026-05-12 10:49:12,517 - INFO - Starting ICT Trading Bot Daemon...
+2026-05-12 10:49:12,521 - INFO - Starting analysis cycle for BTC/USDT on 1m timeframe.
+2026-05-12 10:49:13,191 - INFO - Successfully fetched 100 recent candles for ['1m', '5m', '15m', '1h'].
+2026-05-12 10:49:13,192 - INFO - Starting analysis cycle for ETH/USDT on 1m timeframe.
+2026-05-12 10:49:13,992 - INFO - Successfully fetched 100 recent candles for ['1m', '5m', '15m', '1h'].
+2026-05-12 10:49:13,992 - INFO - Syncing to clock: Sleeping for 48.0 seconds until next 1m candle closes...
+2026-05-12 10:50:02,003 - INFO - Starting analysis cycle for BTC/USDT on 1m timeframe.
+2026-05-12 10:50:06,735 - INFO - Successfully fetched 100 recent candles for ['1m', '5m', '15m', '1h'].
+2026-05-12 10:50:06,768 - INFO - Candle closed at OHLC: [80695.9000, 80695.9000, 80695.9000, 80695.9000]
+2026-05-12 10:50:06,775 - INFO - [DIAGNOSTIC] Math logic found: MSS=0, FVG=0, OB=0
+2026-05-12 10:50:06,776 - INFO - [DIAGNOSTIC] AI Model predicted: MSS=0, FVG=0, OB=0
+2026-05-12 10:50:06,872 - INFO - Checking for Mandatory Market Structure Shift (MSS)...
+2026-05-12 10:50:06,873 - INFO - Not Detected. Mandatory MSS missing.
+2026-05-12 10:50:06,874 - INFO - Starting analysis cycle for ETH/USDT on 1m timeframe.
+2026-05-12 10:50:11,597 - INFO - Successfully fetched 100 recent candles for ['1m', '5m', '15m', '1h'].
+2026-05-12 10:50:11,630 - INFO - Candle closed at OHLC: [2283.9300, 2283.9300, 2283.9300, 2283.9300]
+2026-05-12 10:50:11,637 - INFO - [DIAGNOSTIC] Math logic found: MSS=0, FVG=-1, OB=0
+2026-05-12 10:50:11,638 - INFO - [DIAGNOSTIC] AI Model predicted: MSS=0, FVG=0, OB=0
+2026-05-12 10:50:11,735 - INFO - Checking for Mandatory Market Structure Shift (MSS)...
+2026-05-12 10:50:11,736 - INFO - Not Detected. Mandatory MSS missing.
+2026-05-12 10:50:11,737 - INFO - Syncing to clock: Sleeping for 50.3 seconds until next 1m candle closes...
+2026-05-12 10:51:02,002 - INFO - Starting analysis cycle for BTC/USDT on 1m timeframe.
+2026-05-12 10:51:06,730 - INFO - Successfully fetched 100 recent candles for ['1m', '5m', '15m', '1h'].
+2026-05-12 10:51:06,764 - INFO - Candle closed at OHLC: [80640.0000, 80702.6000, 80633.1000, 80702.6000]
+2026-05-12 10:51:06,770 - INFO - [DIAGNOSTIC] Math logic found: MSS=0, FVG=0, OB=0
+2026-05-12 10:51:06,772 - INFO - [DIAGNOSTIC] AI Model predicted: MSS=0, FVG=0, OB=0
+2026-05-12 10:51:06,870 - INFO - Checking for Mandatory Market Structure Shift (MSS)...
+2026-05-12 10:51:06,872 - INFO - Not Detected. Mandatory MSS missing.
+2026-05-12 10:51:06,873 - INFO - Starting analysis cycle for ETH/USDT on 1m timeframe.
+2026-05-12 10:51:11,777 - INFO - Successfully fetched 100 recent candles for ['1m', '5m', '15m', '1h'].
+2026-05-12 10:51:11,812 - INFO - Candle closed at OHLC: [2282.7900, 2286.3800, 2282.7900, 2286.3800]
+2026-05-12 10:51:11,818 - INFO - [DIAGNOSTIC] Math logic found: MSS=0, FVG=0, OB=0
+2026-05-12 10:51:11,819 - INFO - [DIAGNOSTIC] AI Model predicted: MSS=0, FVG=1, OB=0
+2026-05-12 10:51:11,916 - INFO - Checking for Mandatory Market Structure Shift (MSS)...
+2026-05-12 10:51:11,917 - INFO - Not Detected. Mandatory MSS missing.
+2026-05-12 10:51:11,918 - INFO - Syncing to clock: Sleeping for 50.1 seconds until next 1m candle closes...
+2026-05-12 10:52:02,003 - INFO - Starting analysis cycle for BTC/USDT on 1m timeframe.
+2026-05-12 10:52:06,728 - INFO - Successfully fetched 100 recent candles for ['1m', '5m', '15m', '1h'].
+2026-05-12 10:52:06,762 - INFO - Candle closed at OHLC: [80672.0000, 80688.4000, 80666.6000, 80688.4000]
+2026-05-12 10:52:06,768 - INFO - [DIAGNOSTIC] Math logic found: MSS=0, FVG=-1, OB=0
+2026-05-12 10:52:06,770 - INFO - [DIAGNOSTIC] AI Model predicted: MSS=0, FVG=0, OB=0
+2026-05-12 10:52:06,869 - INFO - Checking for Mandatory Market Structure Shift (MSS)...
+2026-05-12 10:52:06,870 - INFO - Not Detected. Mandatory MSS missing.
+2026-05-12 10:52:06,872 - INFO - Starting analysis cycle for ETH/USDT on 1m timeframe.
+2026-05-12 10:52:11,599 - INFO - Successfully fetched 100 recent candles for ['1m', '5m', '15m', '1h'].
+2026-05-12 10:52:11,634 - INFO - Candle closed at OHLC: [2286.3800, 2286.3800, 2286.3800, 2286.3800]
+2026-05-12 10:52:11,640 - INFO - [DIAGNOSTIC] Math logic found: MSS=0, FVG=1, OB=0
+2026-05-12 10:52:11,642 - INFO - [DIAGNOSTIC] AI Model predicted: MSS=0, FVG=1, OB=0
+2026-05-12 10:52:11,740 - INFO - Checking for Mandatory Market Structure Shift (MSS)...
+2026-05-12 10:52:11,741 - INFO - Not Detected. Mandatory MSS missing.
+2026-05-12 10:52:11,741 - INFO - Syncing to clock: Sleeping for 50.3 seconds until next 1m candle closes...
+2026-05-12 10:53:02,003 - INFO - Starting analysis cycle for BTC/USDT on 1m timeframe.
+2026-05-12 10:53:06,727 - INFO - Successfully fetched 100 recent candles for ['1m', '5m', '15m', '1h'].
+2026-05-12 10:53:06,761 - INFO - Candle closed at OHLC: [80682.9000, 80690.1000, 80672.7000, 80690.1000]
+2026-05-12 10:53:06,768 - INFO - [DIAGNOSTIC] Math logic found: MSS=0, FVG=0, OB=0
+2026-05-12 10:53:06,770 - INFO - [DIAGNOSTIC] AI Model predicted: MSS=0, FVG=0, OB=0
+2026-05-12 10:53:06,867 - INFO - Checking for Mandatory Market Structure Shift (MSS)...
+2026-05-12 10:53:06,868 - INFO - Not Detected. Mandatory MSS missing.
+2026-05-12 10:53:06,870 - INFO - Starting analysis cycle for ETH/USDT on 1m timeframe.
+2026-05-12 10:53:11,596 - INFO - Successfully fetched 100 recent candles for ['1m', '5m', '15m', '1h'].
+2026-05-12 10:53:11,630 - INFO - Candle closed at OHLC: [2286.3800, 2286.3800, 2286.3800, 2286.3800]
+2026-05-12 10:53:11,637 - INFO - [DIAGNOSTIC] Math logic found: MSS=0, FVG=0, OB=0
+2026-05-12 10:53:11,639 - INFO - [DIAGNOSTIC] AI Model predicted: MSS=0, FVG=1, OB=0
+2026-05-12 10:53:11,737 - INFO - Checking for Mandatory Market Structure Shift (MSS)...
+2026-05-12 10:53:11,739 - INFO - Not Detected. Mandatory MSS missing.
+2026-05-12 10:53:11,739 - INFO - Syncing to clock: Sleeping for 50.3 seconds until next 1m candle closes...
+2026-05-12 10:54:02,003 - INFO - Starting analysis cycle for BTC/USDT on 1m timeframe.
+2026-05-12 10:54:06,639 - INFO - Successfully fetched 100 recent candles for ['1m', '5m', '15m', '1h'].
+2026-05-12 10:54:06,672 - INFO - Candle closed at OHLC: [80700.9000, 80706.5000, 80700.9000, 80706.5000]
+2026-05-12 10:54:06,679 - INFO - [DIAGNOSTIC] Math logic found: MSS=0, FVG=1, OB=0
+2026-05-12 10:54:06,681 - INFO - [DIAGNOSTIC] AI Model predicted: MSS=0, FVG=-1, OB=0
+2026-05-12 10:54:06,777 - INFO - Checking for Mandatory Market Structure Shift (MSS)...
+2026-05-12 10:54:06,778 - INFO - Not Detected. Mandatory MSS missing.
+2026-05-12 10:54:06,780 - INFO - Starting analysis cycle for ETH/USDT on 1m timeframe.
+2026-05-12 10:54:11,542 - INFO - Successfully fetched 100 recent candles for ['1m', '5m', '15m', '1h'].
+2026-05-12 10:54:11,575 - INFO - Candle closed at OHLC: [2286.9600, 2286.9600, 2286.9600, 2286.9600]
+2026-05-12 10:54:11,581 - INFO - [DIAGNOSTIC] Math logic found: MSS=0, FVG=1, OB=0
+2026-05-12 10:54:11,583 - INFO - [DIAGNOSTIC] AI Model predicted: MSS=0, FVG=0, OB=0
+2026-05-12 10:54:11,681 - INFO - Checking for Mandatory Market Structure Shift (MSS)...
+2026-05-12 10:54:11,682 - INFO - Not Detected. Mandatory MSS missing.
+2026-05-12 10:54:11,683 - INFO - Syncing to clock: Sleeping for 50.3 seconds until next 1m candle closes...
+2026-05-12 10:55:02,002 - INFO - Starting analysis cycle for BTC/USDT on 1m timeframe.
+2026-05-12 10:55:06,727 - INFO - Successfully fetched 100 recent candles for ['1m', '5m', '15m', '1h'].
+2026-05-12 10:55:06,761 - INFO - Candle closed at OHLC: [80706.5000, 80706.5000, 80706.5000, 80706.5000]
+2026-05-12 10:55:06,767 - INFO - [DIAGNOSTIC] Math logic found: MSS=0, FVG=1, OB=0
+2026-05-12 10:55:06,768 - INFO - [DIAGNOSTIC] AI Model predicted: MSS=0, FVG=0, OB=0
+2026-05-12 10:55:06,865 - INFO - Checking for Mandatory Market Structure Shift (MSS)...
+2026-05-12 10:55:06,866 - INFO - Not Detected. Mandatory MSS missing.
+2026-05-12 10:55:06,868 - INFO - Starting analysis cycle for ETH/USDT on 1m timeframe.
+2026-05-12 10:55:11,591 - INFO - Successfully fetched 100 recent candles for ['1m', '5m', '15m', '1h'].
+2026-05-12 10:55:11,625 - INFO - Candle closed at OHLC: [2285.8700, 2285.8700, 2285.8700, 2285.8700]
+2026-05-12 10:55:11,631 - INFO - [DIAGNOSTIC] Math logic found: MSS=0, FVG=-1, OB=0
+2026-05-12 10:55:11,633 - INFO - [DIAGNOSTIC] AI Model predicted: MSS=0, FVG=0, OB=0
+2026-05-12 10:55:11,730 - INFO - Checking for Mandatory Market Structure Shift (MSS)...
+2026-05-12 10:55:11,731 - INFO - Not Detected. Mandatory MSS missing.
+2026-05-12 10:55:11,732 - INFO - Syncing to clock: Sleeping for 50.3 seconds until next 1m candle closes...
+2026-05-12 10:56:02,003 - INFO - Starting analysis cycle for BTC/USDT on 1m timeframe.
+2026-05-12 10:56:06,726 - INFO - Successfully fetched 100 recent candles for ['1m', '5m', '15m', '1h'].
+2026-05-12 10:56:06,760 - INFO - Candle closed at OHLC: [80690.0000, 80690.0000, 80690.0000, 80690.0000]
+2026-05-12 10:56:06,767 - INFO - [DIAGNOSTIC] Math logic found: MSS=0, FVG=-1, OB=0
+2026-05-12 10:56:06,769 - INFO - [DIAGNOSTIC] AI Model predicted: MSS=0, FVG=0, OB=0
+2026-05-12 10:56:06,867 - INFO - Checking for Mandatory Market Structure Shift (MSS)...
+2026-05-12 10:56:06,868 - INFO - Not Detected. Mandatory MSS missing.
+2026-05-12 10:56:06,870 - INFO - Starting analysis cycle for ETH/USDT on 1m timeframe.
+2026-05-12 10:56:11,596 - INFO - Successfully fetched 100 recent candles for ['1m', '5m', '15m', '1h'].
+2026-05-12 10:56:11,630 - INFO - Candle closed at OHLC: [2285.8700, 2285.8700, 2285.8700, 2285.8700]
+2026-05-12 10:56:11,636 - INFO - [DIAGNOSTIC] Math logic found: MSS=0, FVG=-1, OB=0
+2026-05-12 10:56:11,638 - INFO - [DIAGNOSTIC] AI Model predicted: MSS=0, FVG=0, OB=0
+2026-05-12 10:56:11,736 - INFO - Checking for Mandatory Market Structure Shift (MSS)...
+2026-05-12 10:56:11,738 - INFO - Not Detected. Mandatory MSS missing.
+2026-05-12 10:56:11,738 - INFO - Syncing to clock: Sleeping for 50.3 seconds until next 1m candle closes...

@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  trading-bot:
+    build: .
+    container_name: ict-ai-bot
+    restart: unless-stopped
+    volumes:
+      - ./config.json:/app/config.json
+      - ./data:/app/data
+      - ./models:/app/models
+    # We use a volume for models so that when you train the model once, it persists across container restarts.
+
+  dashboard:
+    build: .
+    container_name: ict-ai-dashboard
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./config.json:/app/config.json
+      - ./data:/app/data
+    command: streamlit run dashboard.py --server.address=0.0.0.0

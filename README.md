@@ -1,13 +1,8 @@
-[![PyPI](https://img.shields.io/pypi/v/smartmoneyconcepts.svg?style=flat-square)](https://pypi.org/project/smartmoneyconcepts/)
-[![Downloads](https://pepy.tech/badge/smartmoneyconcepts/month)](https://pepy.tech/project/smartmoneyconcepts/month)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
-[![Bitcoin Donate](https://badgen.net/badge/Bitcoin/Donate/F19537?icon=bitcoin)](https://blockstream.info/address/bc1petss2mlqyjsajyzhu06wzl667v0f8svc0hnpqjj2d32frtx77g4sg5s0pg)
-
 <p align="center">
   <img src="https://github.com/joshyattridge/smart-money-concepts/blob/f0c0fc28cc290cdd9dfcc6a6ac246ed1d59061be/tests/test.gif" alt="Candle Graph Showing Indicators"/>
 </p>
 
-# Smart Money Concepts (smc)
+# Smart Money Concepts (smc) BETA
 
 The Smart Money Concepts Python Indicator is a sophisticated financial tool developed for traders and investors to gain insights into market sentiment, trends, and potential reversals. This indicator is inspired by Inner Circle Trader (ICT) concepts like Order blocks, Liquidity, Fair Value Gap, Swing Highs and Lows, Break of Structure, Change of Character, and more. Please Take a look and contribute to the project.
 
@@ -134,8 +129,6 @@ time_frame: str - the time frame to get the previous high and low 15m, 1H, 4H, 1
 returns:<br>
 PreviousHigh = the previous high<br>
 PreviousLow = the previous low<br>
-BrokenHigh = 1 once price has broken the previous high of the timeframe, 0 otherwise<br>
-BrokenLow = 1 once price has broken the previous low of the timeframe, 0 otherwise<br>
 
 ### Sessions
 
@@ -172,17 +165,9 @@ Direction = 1 if bullish retracement, -1 if bearish retracement<br>
 CurrentRetracement% = the current retracement percentage from the swing high or low<br>
 DeepestRetracement% = the deepest retracement percentage from the swing high or low<br>
 
-## Hide Credit Message
-
-```bash
-export SMC_CREDIT=0
-```
-
-This method will hide the credit message when you first import the library.
-
 ## Contributing
 
-Please feel free to contribute to the project. By creating your own indicators or improving the existing ones. If you are struggling to find something to do then please check out the issues tab for requested changes.
+This project is still in BETA so please feel free to contribute to the project. By creating your own indicators or improving the existing ones. If you are stuggling to find something to do then please check out the issues tab for requested changes.
 
 1. Fork it (https://github.com/joshyattridge/smartmoneyconcepts/fork).
 2. Study how it's implemented.
@@ -190,8 +175,6 @@ Please feel free to contribute to the project. By creating your own indicators o
 4. Commit your changes (git commit -am 'Add some feature').
 5. Push to the branch (git push origin my-new-feature).
 6. Create a new Pull Request.
-
-Less is more – each pull request should be minimal, focusing on a single function or a small feature. Large, sweeping changes will not be merged, as they are harder to review and maintain. Keep it simple and focused!
 
 ## Disclaimer
 

@@ -1,0 +1,35 @@
+name: build and publish to pypi
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  test-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          lfs: false
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - uses: abatilo/actions-poetry@v2
+        with:
+          poetry-version: "1.3.2"
+      - name: Add Poetry Plugins
+        run: |
+          poetry self add poetry-dynamic-versioning[plugin]
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Run tests
+        run: poetry run pytest
+        env:
+          HEAD: release
+
+      - name: Config PIPY
+        run: poetry config pypi-token.pypi ${{ secrets.PIPY_TOKEN }}
+
+      - name: build and publish
+        run: poetry publish --build

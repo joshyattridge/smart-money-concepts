@@ -1,0 +1,33 @@
+{
+    "exchange": {
+        "name": "binance",
+        "api_key": "YOUR_API_KEY",
+        "api_secret": "YOUR_API_SECRET",
+        "enable_rate_limit": true,
+        "options": {
+            "defaultType": "spot"
+        }
+    },
+    "trading": {
+        "mode": "paper",
+        "symbols": ["BTC/USDT", "ETH/USDT"],
+        "base_timeframe": "1m",
+        "htf_timeframes": ["5m", "15m", "1h"],
+        "risk_per_trade_pct": 1.0,
+        "algorithm_version": "v4"
+    },
+    "telegram": {
+        "bot_token": "YOUR_BOT_TOKEN",
+        "chat_id": "YOUR_CHAT_ID",
+        "enabled": false
+    },
+    "model": {
+        "lstm_hidden_size": 64,
+        "lstm_num_layers": 2,
+        "learning_rate": 0.001,
+        "batch_size": 32,
+        "epochs": 100,
+        "model_path": "models/ict_lstm_model.pth",
+        "use_ai_inference": false
+    }
+}

@@ -1,0 +1,27 @@
+[tool.poetry]
+authors = ["Joshua Attridge"]
+description = "Getting indicators based on smart money concepts or ICT"
+license = "MIT"
+name = "smartmoneyconcepts"
+packages = [{include = "smartmoneyconcepts"}]
+readme = "README.md"
+version = "0.0.0"
+
+[tool.poetry.dependencies]
+numba = "^0.59.1"
+numpy = "^1.26.4"
+pandas = "^2.2.2"
+python = "^3.9"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.2.1"
+
+[build-system]
+build-backend = "poetry_dynamic_versioning.backend"
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
+
+[tool.poetry-dynamic-versioning]
+pattern = "default-unprefixed"
+enable = true
+style = "semver"
+vcs = "git"
