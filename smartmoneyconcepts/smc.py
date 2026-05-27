@@ -150,15 +150,17 @@ class smc:
 
         swing_length *= 2
         # set the highs to 1 if the current high is the highest high in the last 5 candles and next 5 candles
+        half = swing_length // 2
+        is_swing_high = (
+            ohlc["high"].shift(half) == ohlc["high"].rolling(swing_length).max()
+        ).shift(-half)
+        is_swing_low = (
+            ohlc["low"].shift(half) == ohlc["low"].rolling(swing_length).min()
+        ).shift(-half)
         swing_highs_lows = np.where(
-            ohlc["high"]
-            == ohlc["high"].shift(-(swing_length // 2)).rolling(swing_length).max(),
+            is_swing_high.fillna(False),
             1,
-            np.where(
-                ohlc["low"]
-                == ohlc["low"].shift(-(swing_length // 2)).rolling(swing_length).min(),
-                -1,
-                np.nan,
+            np.where(is_swing_low.fillna(False), -1, np.nan,
             ),
         )
 
