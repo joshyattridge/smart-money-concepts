@@ -161,6 +161,10 @@ class smc:
                 np.nan,
             ),
         )
+        
+        # Precompute arrays to avoid expensive .iloc calls in while loop
+        ohlc_high = ohlc["high"].values
+        ohlc_low = ohlc["low"].values
 
         while True:
             positions = np.where(~np.isnan(swing_highs_lows))[0]
@@ -171,11 +175,11 @@ class smc:
             current = swing_highs_lows[positions[:-1]]
             next = swing_highs_lows[positions[1:]]
 
-            highs = ohlc["high"].iloc[positions[:-1]].values
-            lows = ohlc["low"].iloc[positions[:-1]].values
+            highs = ohlc_high[positions[:-1]]
+            lows = ohlc_low[positions[:-1]]
 
-            next_highs = ohlc["high"].iloc[positions[1:]].values
-            next_lows = ohlc["low"].iloc[positions[1:]].values
+            next_highs = ohlc_high[positions[1:]]
+            next_lows = ohlc_low[positions[1:]]
 
             index_to_remove = np.zeros(len(positions), dtype=bool)
 
@@ -237,8 +241,6 @@ class smc:
         Level = the level of the break of structure or change of character
         BrokenIndex = the index of the candle that broke the level
         """
-
-        swing_highs_lows = swing_highs_lows.copy()
 
         level_order = []
         highs_lows_order = []
@@ -419,12 +421,13 @@ class smc:
         swing_high_indices = np.flatnonzero(swing_hl == 1)
         swing_low_indices = np.flatnonzero(swing_hl == -1)
 
-        # List to track active bullish order blocks
-        active_bullish = []
+        # Set to track active bullish order blocks (O(1) removal instead of O(n))
+        active_bullish = set()
         for i in range(ohlc_len):
             close_index = i
-            # Update existing bullish OB
-            for idx in active_bullish.copy():
+            # Update existing bullish OB - use list() to avoid set size change during iteration
+            to_remove = []
+            for idx in active_bullish:
                 if breaker[idx]:
                     if _high[close_index] > top_arr[idx]:
                         # Reset this OB
@@ -436,12 +439,14 @@ class smc:
                         highVolume[idx] = 0.0
                         mitigated_index[idx] = 0
                         percentage[idx] = 0.0
-                        active_bullish.remove(idx)
+                        to_remove.append(idx)
                 else:
                     if ((not close_mitigation and _low[close_index] < bottom_arr[idx])
                         or (close_mitigation and min(_open[close_index], _close[close_index]) < bottom_arr[idx])):
                         breaker[idx] = True
                         mitigated_index[idx] = close_index - 1
+            for idx in to_remove:
+                active_bullish.discard(idx)
 
             # Find last swing high index less than current candle (using binary search)
             pos = np.searchsorted(swing_high_indices, close_index)
@@ -481,30 +486,33 @@ class smc:
                     highVolume[obIndex] = vol_cur + vol_prev1
                     max_vol = max(highVolume[obIndex], lowVolume[obIndex])
                     percentage[obIndex] = (min(highVolume[obIndex], lowVolume[obIndex]) / max_vol * 100.0) if max_vol != 0 else 100.0
-                    active_bullish.append(obIndex)
+                    active_bullish.add(obIndex)
 
-        # List to track active bearish order blocks
-        active_bearish = []
+        # Set to track active bearish order blocks (O(1) removal instead of O(n))
+        active_bearish = set()
         for i in range(ohlc_len):
             close_index = i
             # Update existing bearish OB
-            for idx in active_bearish.copy():
-                if breaker[idx]:
-                    if _low[close_index] < bottom_arr[idx]:
-                        ob[idx] = 0
-                        top_arr[idx] = 0.0
-                        bottom_arr[idx] = 0.0
-                        obVolume[idx] = 0.0
-                        lowVolume[idx] = 0.0
-                        highVolume[idx] = 0.0
-                        mitigated_index[idx] = 0
-                        percentage[idx] = 0.0
-                        active_bearish.remove(idx)
-                else:
-                    if ((not close_mitigation and _high[close_index] > top_arr[idx])
-                        or (close_mitigation and max(_open[close_index], _close[close_index]) > top_arr[idx])):
-                        breaker[idx] = True
-                        mitigated_index[idx] = close_index
+            to_remove = []
+            for idx in active_bearish:
+               if breaker[idx]:
+                   if _low[close_index] < bottom_arr[idx]:
+                       ob[idx] = 0
+                       top_arr[idx] = 0.0
+                       bottom_arr[idx] = 0.0
+                       obVolume[idx] = 0.0
+                       lowVolume[idx] = 0.0
+                       highVolume[idx] = 0.0
+                       mitigated_index[idx] = 0
+                       percentage[idx] = 0.0
+                       to_remove.append(idx)
+               else:
+                   if ((not close_mitigation and _high[close_index] > top_arr[idx])
+                       or (close_mitigation and max(_open[close_index], _close[close_index]) > top_arr[idx])):
+                       breaker[idx] = True
+                       mitigated_index[idx] = close_index
+            for idx in to_remove:
+               active_bearish.discard(idx)
 
             # Find last swing low index less than current candle
             pos = np.searchsorted(swing_low_indices, close_index)
@@ -540,7 +548,7 @@ class smc:
                     highVolume[obIndex] = vol_prev2
                     max_vol = max(highVolume[obIndex], lowVolume[obIndex])
                     percentage[obIndex] = (min(highVolume[obIndex], lowVolume[obIndex]) / max_vol * 100.0) if max_vol != 0 else 100.0
-                    active_bearish.append(obIndex)
+                    active_bearish.add(obIndex)
 
         # Convert zeros to NaN where OB was not set
         ob = np.where(ob != 0, ob, np.nan)
