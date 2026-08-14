@@ -441,7 +441,7 @@ class smc:
                     if ((not close_mitigation and _low[close_index] < bottom_arr[idx])
                         or (close_mitigation and min(_open[close_index], _close[close_index]) < bottom_arr[idx])):
                         breaker[idx] = True
-                        mitigated_index[idx] = close_index - 1
+                        mitigated_index[idx] = close_index
 
             # Find last swing high index less than current candle (using binary search)
             pos = np.searchsorted(swing_high_indices, close_index)
