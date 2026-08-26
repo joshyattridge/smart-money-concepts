@@ -8,7 +8,7 @@ from urllib.request import urlopen
 import pandas as pd
 
 
-BASE_URL = "https://fxmacrodata.com/api/v1/calendar/{currency}"
+BASE_URL = "https://api.fxmacrodata.com/v1/calendar/{currency}"
 
 
 def fetch_release_calendar(currency="USD", start_date=None, end_date=None):
