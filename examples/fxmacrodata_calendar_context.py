@@ -20,7 +20,15 @@ def fetch_release_calendar(currency="USD", start_date=None, end_date=None):
     with urlopen(f"{BASE_URL.format(currency=currency)}?{query}", timeout=20) as response:
         payload = json.load(response)
 
-    return pd.DataFrame(payload.get("data", []))
+    events = payload.get("data") if isinstance(payload, dict) else None
+    if not isinstance(events, list):
+        detail = payload.get("detail") if isinstance(payload, dict) else None
+        raise ValueError(f"FXMacroData returned an unexpected response: {detail or 'missing data list'}")
+    calendar = pd.DataFrame([event for event in events if isinstance(event, dict)])
+    for column in ("top_tier_for_currency", "market_tier", "announcement_datetime_utc", "date"):
+        if column not in calendar.columns:
+            calendar[column] = None
+    return calendar
 
 
 def top_tier_release_dates(calendar):
